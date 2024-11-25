@@ -1,0 +1,15 @@
+{
+  "name": "test",
+  "version": "1.0.0",
+  "main": "test.js",
+  "scripts": {
+    "dev": "node test.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "unzipper": "^0.12.3"
+  },
+  "type": "module"
+}
