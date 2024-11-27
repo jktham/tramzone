@@ -6,13 +6,17 @@ type Station = {
 	name: string,
 	type: string,
 	lines: string,
-	x: number,
-	y: number
+	coords: number[]
 }
 
 type ResponseData = Station[]
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<ResponseData>) {
+	if (await fs.stat("data/stations.json").catch((e) => false)) {
+		let stations = JSON.parse((await fs.readFile("data/stations.json")).toString())
+		res.status(200).json(stations)
+	}
+
 	let csv = await fs.readFile("data/stations.csv")
 
 	let lines = csv.toString().split("\n")
@@ -25,15 +29,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
 	let stations: Station[] = stationsRaw.map((s) => {
 		return {
-			id: Number(s[0]),
+			id: Number(s[1]),
 			name: s[4]?.replace(/['"]+/g, ""),
 			type: s[6]?.replace(/['"]+/g, ""),
 			lines: s[13]?.replace(/['"]+/g, ""),
-			x: Number(s[14]),
-			y: Number(s[15])
+			coords: [Number(s[14]), Number(s[15])]
 		}
 	})
 	stations = stations.filter((s) => s.type && s.type.toLowerCase().includes("tram"))
+
+	fs.writeFile("data/stations.json", JSON.stringify(stations))
 
 	res.status(200).json(stations)
 }
