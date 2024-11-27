@@ -12,16 +12,16 @@ let date = new Date(Math.max(monday.getTime(), thursday.getTime())).toISOString(
 console.log(date)
 
 // get static data
-if (!(await fs.stat("data/").catch((e) => false))) {
-	await fs.mkdir("data/")
+if (!(await fs.stat("data/gtfs/").catch((e) => false))) {
+	await fs.mkdir("data/gtfs/")
 }
-if (!(await fs.readdir("data/")).includes(`gtfs_${date}`)) {
+if (!(await fs.readdir("data/gtfs/")).includes(`${date}`)) {
 	let gtfs_static = await fetch(`https://opentransportdata.swiss/de/dataset/timetable-2024-gtfs2020/resource_permalink/gtfs_fp2024_${date}.zip`)
 	let str = stream.Readable.fromWeb(gtfs_static.body)
 
-	await fs.writeFile(`data/gtfs_${date}.zip`, str)
-	await createReadStream(`data/gtfs_${date}.zip`).pipe(unzipper.Extract({path: `data/gtfs_${date}`})).promise()
-	await fs.unlink(`data/gtfs_${date}.zip`)
+	await fs.writeFile(`data/gtfs/${date}.zip`, str)
+	await createReadStream(`data/gtfs/${date}.zip`).pipe(unzipper.Extract({path: `data/gtfs/${date}`})).promise()
+	await fs.unlink(`data/gtfs/${date}.zip`)
 }
 
 // get realtime data
@@ -31,4 +31,4 @@ let gtfs_realtime = await fetch("https://api.opentransportdata.swiss/gtfsrt2020?
 		"Authorization": test_key
 	}
 })
-await fs.writeFile(`data/realtime.json`, gtfs_realtime.body)
+await fs.writeFile(`data/gtfs/realtime.json`, gtfs_realtime.body)
