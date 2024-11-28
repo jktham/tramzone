@@ -4,6 +4,7 @@ import "ol/ol.css";
 import Map from 'ol/Map';
 import View from "ol/View";
 import TileLayer from "ol/layer/Tile";
+import StadiaMaps from 'ol/source/StadiaMaps.js';
 import OSM from "ol/source/OSM";
 
 export default function Home() {
@@ -13,7 +14,10 @@ export default function Home() {
 			target: "map",
 			layers: [
 				new TileLayer({
-					source: new OSM(),
+					source: new StadiaMaps({
+						layer: 'alidade_smooth',
+						retina: true
+					}),
 				}),
 			]/*,
 			view: new View({
@@ -34,7 +38,7 @@ export default function Home() {
 
 	return (
 		<>
-			<div id="map" style={{width: "100%", height: "400px"}}/>
+			<div id="map" style={{width: "100%", height: "100%"}}/>
 		</>
 	)
 }
