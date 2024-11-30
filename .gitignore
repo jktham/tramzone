@@ -1,6 +1,7 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 /data/gtfs
+/data/parsed
 
 # dependencies
 /node_modules

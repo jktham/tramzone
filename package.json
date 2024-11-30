@@ -4,13 +4,15 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "parse": "pnpm tsx utils/parseData.ts"
   },
   "dependencies": {
     "next": "^15.0.3",
     "ol": "^10.2.1",
     "react": "^18.3.1",
     "shapefile": "^0.6.6",
+    "tsx": "^4.19.2",
     "unzipper": "^0.12.3"
   },
   "devDependencies": {
