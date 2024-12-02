@@ -8,6 +8,7 @@
     "parse": "pnpm tsx utils/parseData.ts"
   },
   "dependencies": {
+    "csv-parser": "^3.0.0",
     "next": "^15.0.3",
     "ol": "^10.2.1",
     "react": "^18.3.1",

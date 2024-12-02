@@ -1,13 +1,15 @@
-import {promises as fs, createReadStream} from "node:fs"
+import {promises as fs, createReadStream, createWriteStream, write} from "node:fs"
 import stream from "node:stream"
 import unzipper from "unzipper"
 import util from "node:util"
 import {exec} from "node:child_process"
 import "util/types"
 let shapefile = require("shapefile")
+import csv from "csv-parser"
+import readline from "node:readline"
 
 function getDate() {
-	// new gtfs data every monday and thursday
+	// new gtfs data every monday and thursday (todo: static at 10:00, rt at 15:00)
 	let monday = new Date()
 	monday.setDate(monday.getDate() - (monday.getDay() + 6) % 7)
 	let thursday = new Date()
@@ -96,33 +98,65 @@ async function parseGtfs() {
 	await fs.writeFile("data/parsed/trips.json", JSON.stringify(trips))
 
 	// stop_times
-	console.log("parsing gtfs stop times")
-	let stopTimesRaw = []
-	try {
-		await util.promisify(exec)(`sed -n '1,10000p' data/gtfs/${date}/stop_times.txt > data/gtfs/${date}/stop_times_short.txt`)
-		let stopTimesCsv = await fs.readFile(`data/gtfs/${date}/stop_times_short.txt`) // full file too big, todo: figure something out
-		for (let line of stopTimesCsv.toString().split("\r\n")) {
-			let s = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/)
-			stopTimesRaw.push(s)
-		}
-	} catch(e) {
-		console.log(e, "skipping gtfs stop times")
-	}
-	stopTimesRaw.shift()
+	console.log("filtering gtfs stop times")
 
-	let stopTimes = stopTimesRaw.map((s) => {
-		return {
-			trip_id: s[0]?.replace(/['"]+/g, ""),
-			arrival: s[1]?.replace(/['"]+/g, ""),
-			departure: s[2]?.replace(/['"]+/g, ""),
-			stop_id: s[3]?.replace(/['"]+/g, ""),
-			stop_sequence: Number(s[4]?.replace(/['"]+/g, ""))
-		}
+	let first = true
+	let tripIds = new Set(trips.map((t) => t.trip_id))
+	let filteredWriteStream = createWriteStream("data/parsed/stopTimesFiltered.csv")
+	await new Promise<void>((resolve) => {
+		let rd = readline.createInterface({
+			input: createReadStream(`data/gtfs/${date}/stop_times.txt`), // big ass file
+			terminal: false
+		})
+	
+		rd.on('line', function(line) {
+			let trip_id = line.split(",")[0].replace(/['"]+/g, "")
+			if (first || tripIds.has(trip_id)) {
+				filteredWriteStream.write(line + "\n");
+			}
+			first = false
+		})
+		
+		rd.on('close', function() {
+			resolve()
+		})
 	})
-	let tripIds = [... new Set(trips.map((t) => t.trip_id))]
-	stopTimes = stopTimes.filter((s) => tripIds.includes(s.trip_id))
-	await fs.writeFile("data/parsed/stopTimes.json", JSON.stringify(stopTimes))
 
+	console.log("parsing gtfs stop times")
+
+	let readStream = createReadStream("data/parsed/stopTimesFiltered.csv")
+	let writeStream = createWriteStream("data/parsed/stopTimes.json")
+
+	writeStream.on("drain", () => {
+		readStream.resume()
+	})
+	writeStream.write("[")
+
+	let sep = ""
+	await new Promise<void>((resolve) => {
+		readStream
+			.pipe(csv())
+			.on("data", (row) => {
+				let station = {
+					trip_id: String(Object.values(row)[0])?.replace(/['"]+/g, ""), // for some reason using the key doesnt work
+					arrival: row["arrival_time"]?.replace(/['"]+/g, ""),
+					departure: row["departure_time"]?.replace(/['"]+/g, ""),
+					stop_id: row["stop_id"]?.replace(/['"]+/g, ""),
+					stop_sequence: Number(row["stop_sequence"]?.replace(/['"]+/g, ""))
+				}
+				if (!writeStream.write(sep + JSON.stringify(station))) {
+					readStream.pause()
+				}
+				if (sep == "") {
+					sep = ","
+				}
+			})
+			.on("end", () => {
+				resolve()
+			})
+		}
+	)
+	writeStream.write("]")
 }
 
 async function parseStations() {
@@ -198,10 +232,22 @@ async function generateTramTrips() {
 	let trips: Trip[] = JSON.parse((await fs.readFile("data/parsed/trips.json")).toString())
 	let stopTimes: StopTime[] = JSON.parse((await fs.readFile("data/parsed/stopTimes.json")).toString())
 
+	let stopTimesMap: Map<string, StopTime[]> = new Map()
+	stopTimes.map((s) => {
+		if (stopTimesMap.has(s.trip_id)) {
+			stopTimesMap.set(s.trip_id, [s, ...stopTimesMap.get(s.trip_id)])
+		} else {
+			stopTimesMap.set(s.trip_id, [s])
+		}
+	})
+	stopTimesMap.forEach((v, k) => {
+		stopTimesMap.set(k, v.sort((a, b) => a.stop_sequence - b.stop_sequence))
+	})
+
 	// todo: aaaa
 	let tramTrips: TramTrip[] = trips.map((t) => {
 		let r: Route = routes.find((r) => r.route_id == t.route_id)
-		let s: StopTime[] = stopTimes.filter((s) => s.trip_id == t.trip_id).sort((a, b) => a.stop_sequence - b.stop_sequence)
+		let s: StopTime[] = stopTimesMap.get(t.trip_id)
 		return {
 			trip_id: t.trip_id,
 			trip_name: t.name,
@@ -234,11 +280,13 @@ async function main() {
 		await fs.mkdir("data/parsed/")
 	}
 
-	await getGtfs()
-	await parseGtfs()
 	await parseLines()
 	await parseStations()
+	await getGtfs()
+	await parseGtfs()
 	await generateTramTrips()
+
+	console.log("done")
 }
 
 main()
