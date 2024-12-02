@@ -68,3 +68,36 @@ type Service = {
 	service_id: string,
 	days: number[],
 }
+
+type TripUpdate = {
+	trip_id: string,
+	trip_time: string,
+	trip_date: string,
+	stops: {
+		stop_id: string,
+		stop_sequence: number,
+		arrival_delay: number,
+		departure_delay: number,
+	}[]
+}
+
+type UpdatedTramTrip = {
+	trip_id: string,
+	trip_name: string,
+	headsign: string,
+	direction: number,
+	route_id: string,
+	route_name: string,
+	service_id: string,
+	service_days: number[],
+	stops: {
+		stop_id: string,
+		stop_diva: number,
+		stop_name: string,
+		stop_sequence: number,
+		arrival: number, // timestamp
+		departure: number,
+		arrival_delay: number, // delay in seconds
+		departure_delay: number,
+	}[]
+}
