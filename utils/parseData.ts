@@ -63,7 +63,7 @@ async function parseGtfs() {
 	}
 	routesRaw.shift()
 
-	let routes = routesRaw.map((r) => {
+	let routes: Route[] = routesRaw.map((r) => {
 		return {
 			route_id: r[0]?.replace(/['"]+/g, ""),
 			name: r[2]?.replace(/['"]+/g, ""),
@@ -71,7 +71,7 @@ async function parseGtfs() {
 			agency: r[1]?.replace(/['"]+/g, "")
 		}
 	})
-	routes = routes.filter((s) => s.type == "900" && s.agency == "3849")
+	routes = routes.filter((s) => s.type == "900" && s.agency == "3849") // tram && VBZ
 	await fs.writeFile("data/parsed/routes.json", JSON.stringify(routes))
 
 	// trips
@@ -84,17 +84,18 @@ async function parseGtfs() {
 	}
 	tripsRaw.shift()
 
-	let trips = tripsRaw.map((t) => {
+	let trips: Trip[] = tripsRaw.map((t) => {
 		return {
 			trip_id: t[2]?.replace(/['"]+/g, ""),
 			route_id: t[0]?.replace(/['"]+/g, ""),
+			service_id: t[1]?.replace(/['"]+/g, ""),
 			headsign: t[3]?.replace(/['"]+/g, ""),
 			name: t[4]?.replace(/['"]+/g, ""),
 			direction: Number(t[5]?.replace(/['"]+/g, ""))
 		}
 	})
-	let routeIds = [... new Set(routes.map((r) => r.route_id))]
-	trips = trips.filter((t) => routeIds.includes(t.route_id))
+	let routeIds = new Set(routes.map((r) => r.route_id))
+	trips = trips.filter((t) => routeIds.has(t.route_id))
 	await fs.writeFile("data/parsed/trips.json", JSON.stringify(trips))
 
 	// stop_times
@@ -157,6 +158,33 @@ async function parseGtfs() {
 		}
 	)
 	writeStream.write("]")
+
+	// calendar
+	console.log("parsing services")
+
+	let servicesCsv = await fs.readFile(`data/gtfs/${date}/calendar.txt`)
+	let servicesRaw = []
+	for (let line of servicesCsv.toString().split("\r\n")) {
+		let s = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/)
+		servicesRaw.push(s)
+	}
+	servicesRaw.shift()
+
+	// todo: consider calendar_dates
+	let services: Service[] = servicesRaw.map((s) => {
+		return {
+			service_id: s[0]?.replace(/['"]+/g, ""),
+			days: [Number(s[1]?.replace(/['"]+/g, "")), 
+				Number(s[2]?.replace(/['"]+/g, "")), 
+				Number(s[3]?.replace(/['"]+/g, "")), 
+				Number(s[4]?.replace(/['"]+/g, "")), 
+				Number(s[5]?.replace(/['"]+/g, "")), 
+				Number(s[6]?.replace(/['"]+/g, "")), 
+				Number(s[7]?.replace(/['"]+/g, ""))
+			]
+		}
+	})
+	await fs.writeFile("data/parsed/services.json", JSON.stringify(services))
 }
 
 async function parseStations() {
@@ -231,6 +259,7 @@ async function generateTramTrips() {
 	let routes: Route[] = JSON.parse((await fs.readFile("data/parsed/routes.json")).toString())
 	let trips: Trip[] = JSON.parse((await fs.readFile("data/parsed/trips.json")).toString())
 	let stopTimes: StopTime[] = JSON.parse((await fs.readFile("data/parsed/stopTimes.json")).toString())
+	let services: Service[] = JSON.parse((await fs.readFile("data/parsed/services.json")).toString())
 
 	let stopTimesMap: Map<string, StopTime[]> = new Map()
 	stopTimes.map((s) => {
@@ -244,6 +273,11 @@ async function generateTramTrips() {
 		stopTimesMap.set(k, v.sort((a, b) => a.stop_sequence - b.stop_sequence))
 	})
 
+	let servicesMap: Map<string, number[]> = new Map()
+	services.map((s) => {
+		servicesMap.set(s.service_id, s.days)
+	})
+
 	// todo: aaaa
 	let tramTrips: TramTrip[] = trips.map((t) => {
 		let r: Route = routes.find((r) => r.route_id == t.route_id)
@@ -255,6 +289,8 @@ async function generateTramTrips() {
 			direction: t.direction,
 			route_id: r.route_id,
 			route_name: r.name,
+			service_id: t.service_id,
+			service_days: servicesMap.get(t.service_id),
 			stops: s.map((s) => {
 				return {
 					stop_id: s.stop_id,

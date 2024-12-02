@@ -12,7 +12,7 @@ type Segment = {
 	to: number,
 	direction: number,
 	sequence: number,
-	geometry: object
+	geometry: object // geojson LineString
 }
 
 type Line = {
@@ -33,6 +33,7 @@ type Route = {
 type Trip = {
 	trip_id: string,
 	route_id: string,
+	service_id: string,
 	headsign: string,
 	name: string,
 	direction: number
@@ -53,10 +54,17 @@ type TramTrip = {
 	direction: number,
 	route_id: string,
 	route_name: string,
+	service_id: string,
+	service_days: number[],
 	stops: {
 		stop_id: string,
 		stop_sequence: number,
-		arrival: string,
+		arrival: string, // hh:mm:ss
 		departure: string
 	}[]
+}
+
+type Service = {
+	service_id: string,
+	days: number[],
 }
