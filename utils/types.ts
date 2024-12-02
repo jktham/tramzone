@@ -92,6 +92,7 @@ type Tram = {
 	service_days: number[],
 	progress: number, // progress as float corresponding to stop sequence
 	delay: number, // current delay to next stop
+	active: boolean, // departed first stop and hasnt arrived at last stop
 	stops: {
 		stop_id: string,
 		stop_diva: number,

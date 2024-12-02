@@ -6,29 +6,31 @@ type ResponseData = Tram[] | string
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<ResponseData>) {
 	if (!(await fs.stat("data/parsed/tramTrips.json").catch((e) => false))) {
-		res.status(404).send("no parsed tramTrips (npm run parse)")
+		res.status(500).send("no parsed tramTrips (npm run parse)")
 		return
 	}
-	let tramTrips: TramTrip[] = JSON.parse((await fs.readFile("data/parsed/tramTrips.json")).toString())
-	let weekday = new Date().getDay()
-	tramTrips = tramTrips.filter((t) => t.service_days[weekday] == 1)
-	let timeRange = 600000
-	tramTrips = tramTrips.filter((t) => {
-		let times = t.stops.map((s) => (s.arrival) - new Date().getTime() + timeRange)
-		times = times.filter((t) => t >= 0)
-		return Math.min(...times) < 2*timeRange
-	})
-
-	let tripIds: Set<string> = new Set(tramTrips.map((t) => t.trip_id))
 
 	const test_key = "57c5dbbbf1fe4d000100001842c323fa9ff44fbba0b9b925f0c052d1"
-	let gtfs_realtime = await fetch("https://api.opentransportdata.swiss/gtfsrt2020?format=JSON", {
+	let gtfs_realtime = fetch("https://api.opentransportdata.swiss/gtfsrt2020?format=JSON", {
 		headers: {
 			"Authorization": test_key
 		}
-	})
-	let realtime = await gtfs_realtime.json()
+	}).then((res) => res.json())
 
+	let weekday = (new Date().getDay() + 6) % 7 // mon=0
+	let tramTrips: TramTrip[] = JSON.parse((await fs.readFile(`data/parsed/tramTrips${weekday}.json`)).toString()) // todo: next day
+	// tramTrips = tramTrips.filter((t) => t.service_days[weekday] == 1)
+
+	let timeRange = 600000
+	tramTrips = tramTrips.filter((t) => {
+		let times = t.stops.map((s) => (s.arrival) - new Date().getTime() + 10*timeRange) // todo: might lose trips with large delays
+		times = times.filter((t) => t >= 0)
+		return Math.min(...times) < 20*timeRange
+	})
+
+	let realtime = await gtfs_realtime
+
+	let tripIds: Set<string> = new Set(tramTrips.map((t) => t.trip_id))
 	let tripUpdates: TripUpdate[] = realtime["Entity"].filter((e) => tripIds.has(e["Id"])).map((t) => {
 		return {
 			trip_id: t["TripUpdate"]["Trip"]["TripId"],
@@ -68,6 +70,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 			service_days: t.service_days,
 			progress: 0,
 			delay: 0,
+			active: false,
 			stops: t.stops.map((s) => {
 				let station: Station = stationsMap.get(Number(s.stop_id.split(":")[0]))
 				return {
@@ -115,16 +118,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 		if (next_stop) {
 			t.delay = next_stop.arrival_delay
 		}
+		if (t.progress > 0 && t.progress < t.stops.length) {
+			t.active = true
+		}
 
 		return t
 	})
 
-	// only with stops in next 10 min
+	// only with stops in 10 min window
 	trams = trams.filter((t) => {
-		let times = t.stops.map((s) => (s.pred_arrival) - new Date().getTime())
+		let times = t.stops.map((s) => (s.pred_arrival) - new Date().getTime() + timeRange)
 		times = times.filter((t) => t >= 0)
-		return Math.min(...times) < timeRange
+		return Math.min(...times) < 2*timeRange
 	})
-	
+	trams = trams.sort((a, b) => Number(a.trip_name) - Number(b.trip_name))
+
 	res.status(200).json(trams)
 }

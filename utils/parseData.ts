@@ -1,8 +1,6 @@
 import {promises as fs, createReadStream, createWriteStream, write} from "node:fs"
 import stream from "node:stream"
 import unzipper from "unzipper"
-import util from "node:util"
-import {exec} from "node:child_process"
 import "util/types"
 let shapefile = require("shapefile")
 import csv from "csv-parser"
@@ -19,10 +17,10 @@ function getDate() {
 	return date
 }
 
-function getISO(time) {
-	let h = time.split(":")[0]
-	let m = time.split(":")[1]
-	let s = time.split(":")[2]
+function getISO(time: string) {
+	let h = Number(time.split(":")[0])
+	let m = Number(time.split(":")[1])
+	let s = Number(time.split(":")[2])
 	let d = new Date()
 	d.setHours(h)
 	d.setMinutes(m)
@@ -318,6 +316,11 @@ async function generateTramTrips() {
 	.sort((a, b) => Number(a.route_name) - Number(b.route_name))
 
 	fs.writeFile("data/parsed/tramTrips.json", JSON.stringify(tramTrips))
+
+	for (let i=0; i<7; i++) {
+		let tramTrips_day = tramTrips.filter((t) => t.service_days[i] == 1)
+		fs.writeFile(`data/parsed/tramTrips${i}.json`, JSON.stringify(tramTrips_day))
+	}
 }
 
 async function main() {
