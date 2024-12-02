@@ -19,6 +19,18 @@ function getDate() {
 	return date
 }
 
+function getISO(time) {
+	let h = time.split(":")[0]
+	let m = time.split(":")[1]
+	let s = time.split(":")[2]
+	let d = new Date()
+	d.setHours(h)
+	d.setMinutes(m)
+	d.setSeconds(s)
+	d.setMilliseconds(0)
+	return d.getTime()
+}
+
 async function getGtfs() {
 	let date = getDate()
 
@@ -138,10 +150,10 @@ async function parseGtfs() {
 		readStream
 			.pipe(csv())
 			.on("data", (row) => {
-				let station = {
+				let station: StopTime = {
 					trip_id: String(Object.values(row)[0])?.replace(/['"]+/g, ""), // for some reason using the key doesnt work
-					arrival: row["arrival_time"]?.replace(/['"]+/g, ""),
-					departure: row["departure_time"]?.replace(/['"]+/g, ""),
+					arrival: getISO(row["arrival_time"]?.replace(/['"]+/g, "")),
+					departure: getISO(row["departure_time"]?.replace(/['"]+/g, "")),
 					stop_id: row["stop_id"]?.replace(/['"]+/g, ""),
 					stop_sequence: Number(row["stop_sequence"]?.replace(/['"]+/g, ""))
 				}

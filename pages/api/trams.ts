@@ -2,19 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next'
 import fs from "node:fs/promises"
 import "util/types"
 
-function getISO(time) {
-	let h = time.split(":")[0]
-	let m = time.split(":")[1]
-	let s = time.split(":")[2]
-	let d = new Date()
-	d.setHours(h)
-	d.setMinutes(m)
-	d.setSeconds(s)
-	d.setMilliseconds(0)
-	return d.getTime()
-}
-
-type ResponseData = UpdatedTramTrip[] | string
+type ResponseData = Tram[] | string
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<ResponseData>) {
 	if (!(await fs.stat("data/parsed/tramTrips.json").catch((e) => false))) {
@@ -24,6 +12,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 	let tramTrips: TramTrip[] = JSON.parse((await fs.readFile("data/parsed/tramTrips.json")).toString())
 	let weekday = new Date().getDay()
 	tramTrips = tramTrips.filter((t) => t.service_days[weekday] == 1)
+	let timeRange = 600000
+	tramTrips = tramTrips.filter((t) => {
+		let times = t.stops.map((s) => (s.arrival) - new Date().getTime() + timeRange)
+		times = times.filter((t) => t >= 0)
+		return Math.min(...times) < 2*timeRange
+	})
 
 	let tripIds: Set<string> = new Set(tramTrips.map((t) => t.trip_id))
 
@@ -61,7 +55,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 		stationsMap.set(s.id, s)
 	})
 
-	let updated: UpdatedTramTrip[] = tramTrips.map((t) => {
+	let trams: Tram[] = tramTrips.map((t) => {
 		let update: TripUpdate = tripUpdatesMap.get(t.trip_id)
 		return {
 			trip_id: t.trip_id,
@@ -72,6 +66,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 			route_name: t.route_name,
 			service_id: t.service_id,
 			service_days: t.service_days,
+			progress: 0,
+			delay: 0,
 			stops: t.stops.map((s) => {
 				let station: Station = stationsMap.get(Number(s.stop_id.split(":")[0]))
 				return {
@@ -79,21 +75,56 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 					stop_diva: station.diva,
 					stop_name: station.name,
 					stop_sequence: s.stop_sequence,
-					arrival: getISO(s.arrival),
-					departure: getISO(s.departure),
+					arrival: s.arrival,
+					departure: s.departure,
 					arrival_delay: update?.stops?.find((us) => us.stop_id == s.stop_id)?.arrival_delay || 0,
 					departure_delay: update?.stops?.find((us) => us.stop_id == s.stop_id)?.departure_delay || 0,
+					pred_arrival: 0,
+					pred_departure: 0,
+					arrived: false,
+					departed: false
 				}
 			})
 		}
 	})
 
-	// only with stops in next 30 min
-	updated = updated.filter((t) => {
-		let times = t.stops.map((s) => s.departure - new Date().getTime())
+	trams = trams.map((t) => {
+		let time = new Date().getTime()
+		t.stops = t.stops.map((s) => {
+			s.pred_arrival = s.arrival + s.arrival_delay*1000
+			s.pred_departure = s.departure + s.departure_delay*1000
+			s.arrived = s.pred_arrival <= time
+			s.departed = s.pred_departure <= time
+			
+			if (s.arrived) {
+				t.progress = Math.max(t.progress, s.stop_sequence)
+			}
+			return s
+		})
+
+		let prev_stop = t.stops.find((s) => s.stop_sequence == Math.floor(t.progress))
+		let next_stop = t.stops.find((s) => s.stop_sequence == Math.floor(t.progress + 1))
+		if (prev_stop && next_stop) {
+			if (prev_stop.departed) {
+				let p = prev_stop.pred_departure
+				let n = next_stop.pred_arrival
+				let frac = (time-p) / (n-p)
+				t.progress += frac
+			}
+		}
+		if (next_stop) {
+			t.delay = next_stop.arrival_delay
+		}
+
+		return t
+	})
+
+	// only with stops in next 10 min
+	trams = trams.filter((t) => {
+		let times = t.stops.map((s) => (s.pred_arrival) - new Date().getTime())
 		times = times.filter((t) => t >= 0)
-		return Math.min(...times) < 1800000
+		return Math.min(...times) < timeRange
 	})
 	
-	res.status(200).json(updated)
+	res.status(200).json(trams)
 }

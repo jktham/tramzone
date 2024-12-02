@@ -41,8 +41,8 @@ type Trip = {
 
 type StopTime = {
 	trip_id: string,
-	arrival: string,
-	departure: string,
+	arrival: number,
+	departure: number,
 	stop_id: string,
 	stop_sequence: number
 }
@@ -59,8 +59,8 @@ type TramTrip = {
 	stops: {
 		stop_id: string,
 		stop_sequence: number,
-		arrival: string, // hh:mm:ss
-		departure: string
+		arrival: number,
+		departure: number
 	}[]
 }
 
@@ -81,7 +81,7 @@ type TripUpdate = {
 	}[]
 }
 
-type UpdatedTramTrip = {
+type Tram = {
 	trip_id: string,
 	trip_name: string,
 	headsign: string,
@@ -90,6 +90,8 @@ type UpdatedTramTrip = {
 	route_name: string,
 	service_id: string,
 	service_days: number[],
+	progress: number, // progress as float corresponding to stop sequence
+	delay: number, // current delay to next stop
 	stops: {
 		stop_id: string,
 		stop_diva: number,
@@ -99,5 +101,9 @@ type UpdatedTramTrip = {
 		departure: number,
 		arrival_delay: number, // delay in seconds
 		departure_delay: number,
+		pred_arrival: number,
+		pred_departure: number,
+		arrived: boolean,
+		departed: boolean,
 	}[]
 }
