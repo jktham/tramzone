@@ -13,16 +13,17 @@ import GeoJSON from "ol/format/GeoJSON";
 import Style from "ol/style/Style.js";
 import { Circle, Stroke, Fill } from "ol/style.js";
 import { features } from "process";
+import { convertLV95toWGS84 } from "../utils/convertCoords";
 
 export default function Home() {
   const { data, isLoading } = useSWR("api/stations", (url) =>
     fetch(url).then((res) => res.json())
   );
 
-  const getSationData: Object = (data) => {
+  const getSationData = (data) => {
     let geoJson = { type: "FeatureCollection", features: [] };
-    for (let point in data) {
-      let coordinates = point.coords;
+    for (let point of data) {
+      let coordinates = convertLV95toWGS84(point.coords);
       let properties = point.name;
       let feature = {
         type: "Feature",
@@ -34,12 +35,22 @@ export default function Home() {
     return geoJson;
   };
 
-  let geoJSON: Object = { type: "FeatureCollection", features: [] };
+  let geoJSON = { type: "FeatureCollection", features: [] };
   console.log(geoJSON);
   if (!isLoading) {
     console.log(data, isLoading);
     geoJSON = getSationData(data);
   }
+
+  // Style for the Stations Layer
+  const fill = new Fill({
+    color: "rgba(0,0,0,1)",
+  });
+
+  const stroke = new Stroke({
+    color: "#3399CC",
+    width: 0,
+  });
 
   useEffect(() => {
     let olView = new View({
@@ -57,6 +68,15 @@ export default function Home() {
         features: features,
       }),
       visible: true,
+      style: new Style({
+        image: new Circle({
+          fill: fill,
+          //stroke: stroke,
+          radius: 5,
+        }),
+        fill: fill,
+        //stroke: stroke,
+      }),
     });
 
     const map = new Map({
@@ -68,16 +88,15 @@ export default function Home() {
             retina: true,
           }),
         }),
-        //stationLayer,
+        stationLayer,
       ],
+      view: olView,
     });
-
-    map.setView(olView);
 
     return () => {
       map.setTarget(null);
     };
-  }, []);
+  }, [geoJSON]);
 
   if (isLoading) {
     return (
