@@ -7,11 +7,21 @@ import csv from "csv-parser"
 import readline from "node:readline"
 
 function getDate() {
-	// new gtfs data every monday and thursday (todo: static at 10:00, rt at 15:00)
+	// new gtfs data every monday and thursday (static at 10:00, rt at 15:00)
+	let updateTime = new Date()
+	updateTime.setHours(15, 30, 0, 0)
+
 	let monday = new Date()
 	monday.setDate(monday.getDate() - (monday.getDay() + 6) % 7)
 	let thursday = new Date()
 	thursday.setDate(thursday.getDate() - (thursday.getDay() + 3) % 7)
+
+	if (monday.getDate() == updateTime.getDate() && monday.getTime() < updateTime.getTime()) {
+		monday.setDate(monday.getDate() - 7)
+	}
+	if (thursday.getDate() == updateTime.getDate() && thursday.getTime() < updateTime.getTime()) {
+		thursday.setDate(thursday.getDate() - 7)
+	}
 
 	let date = new Date(Math.max(monday.getTime(), thursday.getTime())).toISOString().substring(0, 10)
 	return date
