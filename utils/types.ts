@@ -18,6 +18,7 @@ type Segment = {
 type Line = {
 	id: string,
 	name: string,
+	color: string,
 	start: string,
 	end: string,
 	segments: Segment[]

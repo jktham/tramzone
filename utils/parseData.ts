@@ -224,6 +224,7 @@ async function parseStations() {
 async function parseLines() {
 	console.log("parsing dataset lines")
 
+	let lineColors = JSON.parse((await fs.readFile(`data/datasets/lineColors.json`)).toString())
 	let geojson = await shapefile.read("data/datasets/lines.shp", "data/datasets/lines.dbf")
 	let lines: Line[] = []
 	for (let feature of geojson.features) {
@@ -243,6 +244,7 @@ async function parseLines() {
 				let line: Line = {
 					id: feature.properties["LINIENSCHL"],
 					name: feature.properties["LINIENNUMM"],
+					color: lineColors.find((l) => l.name == feature.properties["LINIENNUMM"])?.color || "#ffffff",
 					start: feature.properties["ANFANGSHAL"],
 					end: feature.properties["ENDHALTEST"],
 					segments: [segment]
@@ -251,6 +253,7 @@ async function parseLines() {
 			}
 		}
 	}
+	lines.find((l) => l.name == "10").start = "Zürich, Bahnhofplatz/HB"
 	lines.sort((a, b) => Number(a.name) - Number(b.name))
 	for (let line of lines) {
 		line.segments.sort((a, b) => a.sequence - b.sequence)
