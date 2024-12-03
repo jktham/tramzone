@@ -17,15 +17,12 @@ function getDate() {
 	return date
 }
 
-function getISO(time: string) {
+function getISO(time: string) { // time only
 	let h = Number(time.split(":")[0])
 	let m = Number(time.split(":")[1])
 	let s = Number(time.split(":")[2])
-	let d = new Date()
-	d.setHours(h)
-	d.setMinutes(m)
-	d.setSeconds(s)
-	d.setMilliseconds(0)
+	let d = new Date(0)
+	d.setHours(h, m, s, 0)
 	return d.getTime()
 }
 
