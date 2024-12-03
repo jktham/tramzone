@@ -12,9 +12,10 @@ function getDate() {
 	monday.setDate(monday.getDate() - (monday.getDay() + 6) % 7)
 	let thursday = new Date()
 	thursday.setDate(thursday.getDate() - (thursday.getDay() + 3) % 7)
-
-	let date = new Date(Math.max(monday.getTime(), thursday.getTime())).toISOString().substring(0, 10)
-	return date
+	let date = new Date(Math.max(monday.getTime(), thursday.getTime()))
+    	.toISOString()
+    	.substring(0, 10);
+  	return date;
 }
 
 function getISO(time: string) {
@@ -30,48 +31,54 @@ function getISO(time: string) {
 }
 
 async function getGtfs() {
-	let date = getDate()
+  let date = getDate();
 
-	// get static data
-	if (!(await fs.readdir("data/gtfs/")).includes(`${date}`)) {
-		console.log("getting new gtfs data: ", date)
-		let gtfs_static = await fetch(`https://opentransportdata.swiss/de/dataset/timetable-2024-gtfs2020/resource_permalink/gtfs_fp2024_${date}.zip`)
-		// @ts-ignore: dumb error
-		let str = stream.Readable.fromWeb(gtfs_static.body)
+  // get static data
+  if (!(await fs.readdir("data/gtfs/")).includes(`${date}`)) {
+    console.log("getting new gtfs data: ", date);
+    let gtfs_static = await fetch(
+      `https://opentransportdata.swiss/de/dataset/timetable-2024-gtfs2020/resource_permalink/gtfs_fp2024_${date}.zip`
+    );
+    // @ts-ignore: dumb error
+    let str = stream.Readable.fromWeb(gtfs_static.body);
 
-		await fs.writeFile(`data/gtfs/${date}.zip`, str)
-		console.log("unzipping")
-		await createReadStream(`data/gtfs/${date}.zip`).pipe(unzipper.Extract({path: `data/gtfs/${date}`})).promise()
-		await fs.unlink(`data/gtfs/${date}.zip`)
-		console.log("done")
+    await fs.writeFile(`data/gtfs/${date}.zip`, str);
+    console.log("unzipping");
+    await createReadStream(`data/gtfs/${date}.zip`)
+      .pipe(unzipper.Extract({ path: `data/gtfs/${date}` }))
+      .promise();
+    await fs.unlink(`data/gtfs/${date}.zip`);
+    console.log("done");
+  } else {
+    console.log("using old gtfs data: ", date);
+  }
 
-	} else {
-		console.log("using old gtfs data: ", date)
-	}
-
-	// get realtime data (test)
-	console.log("getting gtfs-rt data")
-	const test_key = "57c5dbbbf1fe4d000100001842c323fa9ff44fbba0b9b925f0c052d1"
-	let gtfs_realtime = await fetch("https://api.opentransportdata.swiss/gtfsrt2020?format=JSON", {
-		headers: {
-			"Authorization": test_key
-		}
-	})
-	await fs.writeFile(`data/gtfs/realtime.json`, await gtfs_realtime.text())
+  // get realtime data (test)
+  console.log("getting gtfs-rt data");
+  const test_key = "57c5dbbbf1fe4d000100001842c323fa9ff44fbba0b9b925f0c052d1";
+  let gtfs_realtime = await fetch(
+    "https://api.opentransportdata.swiss/gtfsrt2020?format=JSON",
+    {
+      headers: {
+        Authorization: test_key,
+      },
+    }
+  );
+  await fs.writeFile(`data/gtfs/realtime.json`, await gtfs_realtime.text());
 }
 
 async function parseGtfs() {
-	let date = getDate()
+  let date = getDate();
 
-	// routes
-	console.log("parsing gtfs routes")
-	let routesCsv = await fs.readFile(`data/gtfs/${date}/routes.txt`)
-	let routesRaw = []
-	for (let line of routesCsv.toString().split("\r\n")) {
-		let r = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/)
-		routesRaw.push(r)
-	}
-	routesRaw.shift()
+  // routes
+  console.log("parsing gtfs routes");
+  let routesCsv = await fs.readFile(`data/gtfs/${date}/routes.txt`);
+  let routesRaw = [];
+  for (let line of routesCsv.toString().split("\r\n")) {
+    let r = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+    routesRaw.push(r);
+  }
+  routesRaw.shift();
 
 	let routes: Route[] = routesRaw.map((r) => {
 		return {
@@ -84,15 +91,15 @@ async function parseGtfs() {
 	routes = routes.filter((s) => s.type == "900" && s.agency == "3849") // tram && VBZ
 	await fs.writeFile("data/parsed/routes.json", JSON.stringify(routes))
 
-	// trips
-	console.log("parsing gtfs trips")
-	let tripsCsv = await fs.readFile(`data/gtfs/${date}/trips.txt`)
-	let tripsRaw = []
-	for (let line of tripsCsv.toString().split("\r\n")) {
-		let t = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/)
-		tripsRaw.push(t)
-	}
-	tripsRaw.shift()
+  // trips
+  console.log("parsing gtfs trips");
+  let tripsCsv = await fs.readFile(`data/gtfs/${date}/trips.txt`);
+  let tripsRaw = [];
+  for (let line of tripsCsv.toString().split("\r\n")) {
+    let t = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+    tripsRaw.push(t);
+  }
+  tripsRaw.shift();
 
 	let trips: Trip[] = tripsRaw.map((t) => {
 		return {
@@ -195,76 +202,80 @@ async function parseGtfs() {
 		}
 	})
 	await fs.writeFile("data/parsed/services.json", JSON.stringify(services))
-}
 
 async function parseStations() {
-	console.log("parsing dataset stations")
+  console.log("parsing dataset stations");
 
-	let csv = await fs.readFile("data/datasets/stations.csv")
-	let lines = csv.toString().split("\n")
-	let stationsRaw = []
-	for (let line of lines) {
-		let s = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/)
-		stationsRaw.push(s)
-	}
-	stationsRaw.shift()
+  let csv = await fs.readFile("data/datasets/stations.csv");
+  let lines = csv.toString().split("\n");
+  let stationsRaw = [];
+  for (let line of lines) {
+    let s = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+    stationsRaw.push(s);
+  }
+  stationsRaw.shift();
 
-	let stations: Station[] = stationsRaw.map((s) => {
-		return {
-			id: Number(s[0]),
-			diva: Number(s[1]),
-			name: s[4]?.replace(/['"]+/g, ""),
-			type: s[6]?.replace(/['"]+/g, ""),
-			lines: s[13]?.replace(/['"]+/g, ""),
-			coords: [Number(s[14]), Number(s[15])]
-		}
-	})
-	stations = stations.filter((s) => s.type && s.type.toLowerCase().includes("tram"))
+  let stations: Station[] = stationsRaw.map((s) => {
+    return {
+      id: Number(s[0]),
+      diva: Number(s[1]),
+      name: s[4]?.replace(/['"]+/g, ""),
+      type: s[6]?.replace(/['"]+/g, ""),
+      lines: s[13]?.replace(/['"]+/g, ""),
+      coords: [Number(s[14]), Number(s[15])],
+    };
+  });
+  stations = stations.filter(
+    (s) => s.type && s.type.toLowerCase().includes("tram")
+  );
 
-	fs.writeFile("data/parsed/stations.json", JSON.stringify(stations))
+  fs.writeFile("data/parsed/stations.json", JSON.stringify(stations));
 }
 
 async function parseLines() {
-	console.log("parsing dataset lines")
+  console.log("parsing dataset lines");
 
-	let geojson = await shapefile.read("data/datasets/lines.shp", "data/datasets/lines.dbf")
-	let lines: Line[] = []
-	for (let feature of geojson.features) {
-		if (feature.properties["BETRIEBS00"]?.includes("VBZ-Tram")) {
-			let segment: Segment = {
-				from: feature.properties["VONHALTEST"],
-				to: feature.properties["BISHALTEST"],
-				direction: feature.properties["RICHTUNG"],
-				sequence: feature.properties["SEQUENZNR"],
-				geometry: feature.geometry
-			}
-			
-			let found = lines.find((l) => l.id === feature.properties["LINIENSCHL"])
-			if (found) {
-				found.segments.push(segment)
-			} else {
-				let line: Line = {
-					id: feature.properties["LINIENSCHL"],
-					name: feature.properties["LINIENNUMM"],
-					start: feature.properties["ANFANGSHAL"],
-					end: feature.properties["ENDHALTEST"],
-					segments: [segment]
-				}
-				lines.push(line)
-			}
-		}
-	}
-	lines.sort((a, b) => Number(a.name) - Number(b.name))
-	for (let line of lines) {
-		line.segments.sort((a, b) => a.sequence - b.sequence)
-		line.segments.sort((a, b) => a.direction - b.direction)
-	}
+  let geojson = await shapefile.read(
+    "data/datasets/lines.shp",
+    "data/datasets/lines.dbf"
+  );
+  let lines: Line[] = [];
+  for (let feature of geojson.features) {
+    if (feature.properties["BETRIEBS00"]?.includes("VBZ-Tram")) {
+      let segment: Segment = {
+        from: feature.properties["VONHALTEST"],
+        to: feature.properties["BISHALTEST"],
+        direction: feature.properties["RICHTUNG"],
+        sequence: feature.properties["SEQUENZNR"],
+        geometry: feature.geometry,
+      };
 
-	fs.writeFile("data/parsed/lines.json", JSON.stringify(lines))
+      let found = lines.find((l) => l.id === feature.properties["LINIENSCHL"]);
+      if (found) {
+        found.segments.push(segment);
+      } else {
+        let line: Line = {
+          id: feature.properties["LINIENSCHL"],
+          name: feature.properties["LINIENNUMM"],
+          start: feature.properties["ANFANGSHAL"],
+          end: feature.properties["ENDHALTEST"],
+          segments: [segment],
+        };
+        lines.push(line);
+      }
+    }
+  }
+  lines.sort((a, b) => Number(a.name) - Number(b.name));
+  for (let line of lines) {
+    line.segments.sort((a, b) => a.sequence - b.sequence);
+    line.segments.sort((a, b) => a.direction - b.direction);
+  }
+
+  fs.writeFile("data/parsed/lines.json", JSON.stringify(lines));
 }
 
 async function generateTramTrips() {
-	console.log("generating tramTrips")
+  console.log("generating tramTrips");
 
 	let routes: Route[] = JSON.parse((await fs.readFile("data/parsed/routes.json")).toString())
 	let trips: Trip[] = JSON.parse((await fs.readFile("data/parsed/trips.json")).toString())
@@ -324,12 +335,12 @@ async function generateTramTrips() {
 }
 
 async function main() {
-	if (!(await fs.stat("data/gtfs/").catch((e) => false))) {
-		await fs.mkdir("data/gtfs/")
-	}
-	if (!(await fs.stat("data/parsed/").catch((e) => false))) {
-		await fs.mkdir("data/parsed/")
-	}
+  if (!(await fs.stat("data/gtfs/").catch((e) => false))) {
+    await fs.mkdir("data/gtfs/");
+  }
+  if (!(await fs.stat("data/parsed/").catch((e) => false))) {
+    await fs.mkdir("data/parsed/");
+  }
 
 	await parseLines()
 	await parseStations()
