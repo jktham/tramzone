@@ -285,7 +285,7 @@ async function parseLines() {
           name: feature.properties["LINIENNUMM"],
           color:
             lineColors.find((l) => l.name == feature.properties["LINIENNUMM"])
-              ?.color || "#ffffff",
+              ?.color || "#000000",
           start: feature.properties["ANFANGSHAL"],
           end: feature.properties["ENDHALTEST"],
           segments: [segment],
@@ -300,6 +300,18 @@ async function parseLines() {
     line.segments.sort((a, b) => a.sequence - b.sequence);
     line.segments.sort((a, b) => a.direction - b.direction);
   }
+
+	let extraLine: Line = {
+		id: "01099_",
+		name: "E",
+		color:
+			lineColors.find((l) => l.name == "E")
+				?.color || "#000000",
+		start: "Extra",
+		end: "Extra",
+		segments: [],
+	};
+	lines.push(extraLine);
 
   fs.writeFile("data/parsed/lines.json", JSON.stringify(lines));
 }
