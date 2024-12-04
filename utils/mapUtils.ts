@@ -41,3 +41,61 @@ export function convertLV95toWGS84(coords) {
   let northCoord = (northCoord1 * 100) / 36;
   return [eastCoord, northCoord];
 }
+
+// todo: cleanup
+export function getTramLocation(tram: Tram, lines: Line[]) {
+  let prev_stop = tram.stops.find(
+    (s) => s.stop_sequence == Math.floor(tram.progress)
+  );
+  let next_stop = tram.stops.find(
+    (s) => s.stop_sequence == Math.floor(tram.progress + 1)
+  );
+
+  let segments = lines.flatMap((l) => l.segments);
+  let current_segment = segments.find((s) => s.from == prev_stop?.stop_diva && s.to == next_stop?.stop_diva); // todo: may not be on right line
+  if (!current_segment) {
+    console.warn(`missing line segment from ${prev_stop?.stop_diva} to ${next_stop?.stop_diva}`, prev_stop, next_stop);
+    let try_prev = segments.find((s) => s.from == prev_stop?.stop_diva)?.geometry.coordinates[0];
+    return try_prev || [0, 0];
+  }
+
+  let total_length = 0;
+  let subsegments = [];
+  for (let i=0; i<current_segment.geometry.coordinates.length - 1; i++) {
+    let a = current_segment.geometry.coordinates[i];
+    let b = current_segment.geometry.coordinates[i+1];
+    let l = Math.sqrt((a[0]-b[0])**2 + (a[1]-b[1])**2);
+
+    subsegments.push({
+      a: a,
+      b: b,
+      length: l,
+      start: total_length,
+      end: total_length + l,
+    });
+    total_length += l;
+  }
+
+  for (let s of subsegments) {
+    s.p_start = s.start / total_length;
+    s.p_end = s.end / total_length;
+  }
+
+  let p = tram.progress % 1;
+  for (let s of subsegments) {
+    if (p >= s.p_start && p < s.p_end) {
+      let p_dist = p - s.p_start;
+      let p_scaled = p_dist / (s.p_end - s.p_start);
+      
+      let coords = [
+        s.a[0] * p_scaled + s.b[0] * (1-p_scaled),
+        s.a[1] * p_scaled + s.b[1] * (1-p_scaled),
+      ];
+      return coords;
+    }
+  }
+
+  console.warn("couldnt find tram location", tram);
+  let try_prev = segments.find((s) => s.from == prev_stop?.stop_diva)?.geometry.coordinates[0];
+  return try_prev || [0, 0];
+}

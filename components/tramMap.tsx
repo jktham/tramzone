@@ -6,7 +6,7 @@ import TileLayer from "ol/layer/Tile";
 import StadiaMaps from "ol/source/StadiaMaps";
 import OSM from "ol/source/OSM";
 import * as OlProj from "ol/proj";
-import { grayscaleLayer } from "../utils/mapUtils";
+import { getTramLocation, grayscaleLayer } from "../utils/mapUtils";
 import RenderEvent from "ol/render/Event";
 import VectorLayer from "ol/layer/Vector";
 import VectorSource from "ol/source/Vector";
@@ -61,16 +61,14 @@ export default function TramMap({
   const getTramData = (data: Tram[]) => {
     let geoJSON = { type: "FeatureCollection", features: [] };
     for (let tram of data) {
-      let current_stop = tram.stops.find(
-        (s) => s.stop_sequence == Math.floor(tram.progress)
-      );
       let feature = {
         type: "Feature",
         geometry: {
           type: "Point",
-          coordinates: stationData.find((s) => s.diva == current_stop?.stop_diva)?.coords,
+          coordinates: getTramLocation(tram, lineData),
         },
         properties: {
+          name: tram.route_name,
           color: lineData.find((l) => l.name == tram.route_name)?.color,
         },
       };
@@ -146,7 +144,7 @@ export default function TramMap({
       style: (feature) =>
         new Style({
           image: new Circle({
-            radius: 5,
+            radius: 8,
             fill: new Fill({
               color: feature.get("color"),
             }),

@@ -18,7 +18,7 @@ export default function Home() {
     data: tramData,
     error: tramsError,
     isLoading: tramsLoading,
-  } = useSWR("/api/trams?active=true", fetcher);
+  } = useSWR("/api/trams?active=true", fetcher, {refreshInterval: 0}); // refresh for testing
 
   if (linesLoading || stationsLoading || tramsLoading) {
     return (
