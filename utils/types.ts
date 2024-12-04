@@ -18,6 +18,7 @@ type Segment = {
 type Line = {
 	id: string,
 	name: string,
+	color: string,
 	start: string,
 	end: string,
 	segments: Segment[]
@@ -59,7 +60,7 @@ type TramTrip = {
 	stops: {
 		stop_id: string,
 		stop_sequence: number,
-		arrival: number,
+		arrival: number, // timestamp (time on 1970-01-01)
 		departure: number
 	}[]
 }
@@ -98,7 +99,7 @@ type Tram = {
 		stop_diva: number,
 		stop_name: string,
 		stop_sequence: number,
-		arrival: number, // timestamp
+		arrival: number, // timestamp (today)
 		departure: number,
 		arrival_delay: number, // delay in seconds
 		departure_delay: number,

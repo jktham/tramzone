@@ -2,12 +2,24 @@ import type { NextApiRequest, NextApiResponse } from 'next'
 import fs from "node:fs/promises"
 import "util/types"
 
+type QueryParams = {
+	active: boolean, // return only currently active trams
+	line: string, // return only trams belonging to line (route_name)
+	station: number, // return only trams with stops at station (diva_id)
+}
+
 type ResponseData = Tram[] | string
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<ResponseData>) {
 	if (!(await fs.stat("data/parsed/tramTrips.json").catch((e) => false))) {
 		res.status(500).send("no parsed tramTrips (npm run parse)")
 		return
+	}
+
+	let query: QueryParams = {
+		active: req.query.active === "true" || false,
+		line: (req.query.line && req.query.line.toString()) || "",
+		station: Number(req.query.station) || 0,
 	}
 
 	const test_key = "57c5dbbbf1fe4d000100001842c323fa9ff44fbba0b9b925f0c052d1"
@@ -20,13 +32,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 	let weekday = (new Date().getDay() + 6) % 7 // mon=0
 	let tramTrips: TramTrip[] = JSON.parse((await fs.readFile(`data/parsed/tramTrips${weekday}.json`)).toString()) // todo: next day
 	// tramTrips = tramTrips.filter((t) => t.service_days[weekday] == 1)
-
-	let timeRange = 600000
-	tramTrips = tramTrips.filter((t) => {
-		let times = t.stops.map((s) => (s.arrival) - new Date().getTime() + 10*timeRange) // todo: might lose trips with large delays
-		times = times.filter((t) => t >= 0)
-		return Math.min(...times) < 20*timeRange
-	})
 
 	let realtime = await gtfs_realtime
 
@@ -57,6 +62,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 		stationsMap.set(s.id, s)
 	})
 
+	let today = new Date().setHours(0, 0, 0, 0)
 	let trams: Tram[] = tramTrips.map((t) => {
 		let update: TripUpdate = tripUpdatesMap.get(t.trip_id)
 		return {
@@ -78,8 +84,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 					stop_diva: station.diva,
 					stop_name: station.name,
 					stop_sequence: s.stop_sequence,
-					arrival: s.arrival,
-					departure: s.departure,
+					arrival: today + s.arrival,
+					departure: today + s.departure,
 					arrival_delay: update?.stops?.find((us) => us.stop_id == s.stop_id)?.arrival_delay || 0,
 					departure_delay: update?.stops?.find((us) => us.stop_id == s.stop_id)?.departure_delay || 0,
 					pred_arrival: 0,
@@ -125,12 +131,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 		return t
 	})
 
-	// only with stops in 10 min window
-	trams = trams.filter((t) => {
-		let times = t.stops.map((s) => (s.pred_arrival) - new Date().getTime() + timeRange)
-		times = times.filter((t) => t >= 0)
-		return Math.min(...times) < 2*timeRange
-	})
+	if (query.active) {
+		trams = trams.filter((t) => t.active)
+	}
+	if (query.line) {
+		trams = trams.filter((t) => t.route_name == query.line)
+	}
+	if (query.station) {
+		trams = trams.filter((t) => new Set(t.stops.map((s => s.stop_diva))).has(query.station))
+	}
 	trams = trams.sort((a, b) => Number(a.trip_name) - Number(b.trip_name))
 
 	res.status(200).json(trams)

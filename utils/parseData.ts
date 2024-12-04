@@ -18,15 +18,12 @@ function getDate() {
   	return date;
 }
 
-function getISO(time: string) {
+function getISO(time: string) { // time only
 	let h = Number(time.split(":")[0])
 	let m = Number(time.split(":")[1])
 	let s = Number(time.split(":")[2])
-	let d = new Date()
-	d.setHours(h)
-	d.setMinutes(m)
-	d.setSeconds(s)
-	d.setMilliseconds(0)
+	let d = new Date(0)
+	d.setHours(h, m, s, 0)
 	return d.getTime()
 }
 
@@ -249,6 +246,41 @@ async function parseLines() {
         sequence: feature.properties["SEQUENZNR"],
         geometry: feature.geometry,
       };
+	let lineColors = JSON.parse((await fs.readFile(`data/datasets/lineColors.json`)).toString())
+	let geojson = await shapefile.read("data/datasets/lines.shp", "data/datasets/lines.dbf")
+	let lines: Line[] = []
+	for (let feature of geojson.features) {
+		if (feature.properties["BETRIEBS00"]?.includes("VBZ-Tram")) {
+			let segment: Segment = {
+				from: feature.properties["VONHALTEST"],
+				to: feature.properties["BISHALTEST"],
+				direction: feature.properties["RICHTUNG"],
+				sequence: feature.properties["SEQUENZNR"],
+				geometry: feature.geometry
+			}
+			
+			let found = lines.find((l) => l.id === feature.properties["LINIENSCHL"])
+			if (found) {
+				found.segments.push(segment)
+			} else {
+				let line: Line = {
+					id: feature.properties["LINIENSCHL"],
+					name: feature.properties["LINIENNUMM"],
+					color: lineColors.find((l) => l.name == feature.properties["LINIENNUMM"])?.color || "#ffffff",
+					start: feature.properties["ANFANGSHAL"],
+					end: feature.properties["ENDHALTEST"],
+					segments: [segment]
+				}
+				lines.push(line)
+			}
+		}
+	}
+	lines.find((l) => l.name == "10").start = "Zürich, Bahnhofplatz/HB"
+	lines.sort((a, b) => Number(a.name) - Number(b.name))
+	for (let line of lines) {
+		line.segments.sort((a, b) => a.sequence - b.sequence)
+		line.segments.sort((a, b) => a.direction - b.direction)
+	}
 
       let found = lines.find((l) => l.id === feature.properties["LINIENSCHL"]);
       if (found) {

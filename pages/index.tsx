@@ -13,7 +13,8 @@ import GeoJSON from "ol/format/GeoJSON";
 import Style from "ol/style/Style.js";
 import { Circle, Stroke, Fill } from "ol/style.js";
 import { features } from "process";
-import { convertLV95toWGS84 } from "../utils/convertCoords";
+import { convertLV95toWGS84 } from "../utils/mapUtils";
+import TramMap from "../components/tramMap";
 
 export default function Home() {
   const { data, isLoading } = useSWR("api/stations", (url) =>
@@ -108,7 +109,11 @@ export default function Home() {
 
   return (
     <>
-      <div id="map" style={{ width: "100%", height: "100%" }} />
+      <TramMap
+        lineData={lineData}
+        stationData={stationData}
+        tramData={tramData}
+      ></TramMap>
     </>
   );
 }
