@@ -10,6 +10,7 @@ import "util/types";
 let shapefile = require("shapefile");
 import csv from "csv-parser";
 import readline from "node:readline";
+import { convertLV95toWGS84 } from "../utils/mapUtils";
 
 function getDate() {
   // new gtfs data every monday and thursday (static at 10:00, rt at 15:00)
@@ -245,7 +246,7 @@ async function parseStations() {
       name: s[4]?.replace(/['"]+/g, ""),
       type: s[6]?.replace(/['"]+/g, ""),
       lines: s[13]?.replace(/['"]+/g, ""),
-      coords: [Number(s[14]), Number(s[15])],
+      coords: convertLV95toWGS84([Number(s[14]), Number(s[15])]),
     };
   });
   stations = stations.filter(
@@ -275,6 +276,7 @@ async function parseLines() {
         sequence: feature.properties["SEQUENZNR"],
         geometry: feature.geometry,
       };
+			segment.geometry.coordinates = segment.geometry.coordinates.map((c) => convertLV95toWGS84(c));
 
       let found = lines.find((l) => l.id === feature.properties["LINIENSCHL"]);
       if (found) {

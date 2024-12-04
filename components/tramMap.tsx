@@ -8,7 +8,6 @@ import OSM from "ol/source/OSM";
 import * as OlProj from "ol/proj";
 import { grayscaleLayer } from "../utils/mapUtils";
 import RenderEvent from "ol/render/Event";
-import { convertLV95toWGS84 } from "../utils/mapUtils";
 import VectorLayer from "ol/layer/Vector";
 import VectorSource from "ol/source/Vector";
 import GeoJSON from "ol/format/GeoJSON";
@@ -26,15 +25,15 @@ export default function TramMap({
   tramData: Tram[];
 }) {
   // FUNCTIONS TO PARSE THE DATA
-  const getSationData = (data: Station[]) => {
+  const getStationData = (data: Station[]) => {
     let geoJson = { type: "FeatureCollection", features: [] };
-    for (let point of data) {
-      let coordinates = convertLV95toWGS84(point.coords);
-      let properties = point.name;
+    for (let station of data) {
       let feature = {
         type: "Feature",
-        geometry: { type: "Point", coordinates: coordinates },
-        properties: properties,
+        geometry: { type: "Point", coordinates: station.coords },
+        properties: {
+          name: station.name,
+        },
       };
       geoJson.features.push(feature);
     }
@@ -45,9 +44,6 @@ export default function TramMap({
     let geoJSON = { type: "FeatureCollection", features: [] };
     for (let line of data) {
       for (let segment of line.segments) {
-        segment.geometry.coordinates = segment.geometry.coordinates.map((c) =>
-          convertLV95toWGS84(c)
-        );
         let feature = {
           type: "Feature",
           geometry: segment.geometry,
@@ -72,9 +68,7 @@ export default function TramMap({
         type: "Feature",
         geometry: {
           type: "Point",
-          coordinates: convertLV95toWGS84(
-            stationData.find((s) => s.diva == current_stop.stop_diva).coords
-          ),
+          coordinates: stationData.find((s) => s.diva == current_stop?.stop_diva)?.coords,
         },
         properties: {
           color: lineData.find((l) => l.name == tram.route_name)?.color,
@@ -86,7 +80,7 @@ export default function TramMap({
   };
 
   // GET THE GEOJSON
-  const stationGeoJSON = getSationData(stationData);
+  const stationGeoJSON = getStationData(stationData);
   const lineGeoJSON = getLineData(lineData);
   const tramGeoJSON = getTramData(tramData);
   const view = new View({
