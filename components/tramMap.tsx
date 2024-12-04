@@ -85,6 +85,10 @@ export default function TramMap({
     return geoJSON;
   };
 
+  // GET THE GEOJSON
+  const stationGeoJSON = getSationData(stationData);
+  const lineGeoJSON = getLineData(lineData);
+  const tramGeoJSON = getTramData(tramData);
   const view = new View({
     center: OlProj.fromLonLat([8.5417, 47.3769]),
     zoom: 15,
@@ -105,11 +109,6 @@ export default function TramMap({
   });
 
   useEffect(() => {
-    // GET THE GEOJSON
-    const stationGeoJSON = getSationData(stationData);
-    const lineGeoJSON = getLineData(lineData);
-    const tramGeoJSON = getTramData(tramData);
-
     const stationLayer = new VectorLayer({
       source: new VectorSource({
         features: new GeoJSON().readFeatures(stationGeoJSON, {
@@ -172,6 +171,12 @@ export default function TramMap({
         zoom: 15,
       })
     );
+
+    map.on("click", function (e) {
+      map.forEachFeatureAtPixel(e.pixel, function (feature, layer) {
+        console.log(feature);
+      });
+    });
 
     return () => {
       map.setTarget(null);
