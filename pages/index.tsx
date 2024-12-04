@@ -1,15 +1,40 @@
+import useSWR from "swr";
+import TramMap from "../components/tramMap";
 
-import Map from "../Components/tramMap";
+const fetcher = (url) => fetch(url).then((res) => res.json());
 
 export default function Home() {
+  const {
+    data: lineData,
+    error: linesError,
+    isLoading: linesLoading,
+  } = useSWR("/api/lines", fetcher);
+  const {
+    data: stationData,
+    error: stationsError,
+    isLoading: stationsLoading,
+  } = useSWR("/api/stations", fetcher);
+  const {
+    data: tramData,
+    error: tramsError,
+    isLoading: tramsLoading,
+  } = useSWR("/api/trams?active=true", fetcher);
 
-	const lineData = {};
-	const stationData = {};
-	const tramData = {};
+  if (linesLoading || stationsLoading || tramsLoading) {
+    return (
+      <>
+        <div>Is Loading...</div>
+      </>
+    );
+  }
 
-	return (
-		<>
-			<Map lineData={lineData} stationData={stationData} tramData={tramData}></Map>
-		</>
-	)
+  return (
+    <>
+      <TramMap
+        lineData={lineData}
+        stationData={stationData}
+        tramData={tramData}
+      ></TramMap>
+    </>
+  );
 }

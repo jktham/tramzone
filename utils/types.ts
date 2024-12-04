@@ -12,7 +12,10 @@ type Segment = {
 	to: number,
 	direction: number,
 	sequence: number,
-	geometry: object // geojson LineString
+	geometry: { // geojson LineString
+		type: string,
+		coordinates: number[][]
+	}
 }
 
 type Line = {
