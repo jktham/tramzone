@@ -288,6 +288,9 @@ async function parseStations() {
 	});
 	stations = stations.filter((s) => s.type && s.type.toLowerCase().includes("tram"));
 
+	let ignoredStations = JSON.parse((await fs.readFile(`data/datasets/ignoredStations.json`)).toString());
+	stations = stations.filter((s) => !ignoredStations.includes(s.id));
+
 	fs.writeFile("data/parsed/stations.json", JSON.stringify(stations));
 }
 

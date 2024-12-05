@@ -33,7 +33,7 @@ export function getLineData (data: Line[]) {
 export function getTramData (data: Tram[], lineData: Line[]) {
     let geoJSON = {type: "FeatureCollection", features: []};
     for (let tram of data) {
-        let additionalContent = {type: "tram", color: lineData.find((l) => l.name == tram.route_name)?.color,}
+        let additionalContent = {type: "tram", color: lineData.find((l) => l.name == tram.route_name)?.color, name: tram.route_name}
         let feature = {
             type: "Feature",
             geometry: {

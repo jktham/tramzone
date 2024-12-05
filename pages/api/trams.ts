@@ -28,6 +28,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 	let gtfs_realtime = fetch("https://api.opentransportdata.swiss/gtfsrt2020?format=JSON", {
 		headers: {
 			Authorization: test_key,
+			"Accept-Encoding": "gzip, deflate",
 		},
 	}).then((res) => res.json());
 
