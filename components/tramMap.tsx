@@ -16,62 +16,9 @@ import {Circle, Stroke, Fill} from "ol/style.js";
 import "../utils/types";
 import {Layer} from "ol/layer";
 import ol from "ol/dist/ol";
+import { getStationData, getTramData, getLineData } from "../utils/dataUtils";
 
 export default function TramMap({lineData, stationData, tramData}: { lineData: Line[]; stationData: Station[]; tramData: Tram[]; }) {
-
-	// FUNCTIONS TO PARSE THE DATA TODO: put in different file ////
-	const getStationData = (data: Station[]) => {
-		let geoJson = {type: "FeatureCollection", features: []};
-		for (let station of data) {
-			let feature = {
-				type: "Feature",
-				geometry: {type: "Point", coordinates: station.coords},
-				properties: {
-					name: station.name,
-				},
-			};
-			geoJson.features.push(feature);
-		}
-		return geoJson;
-	};
-
-	const getLineData = (data: Line[]) => {
-		let geoJSON = {type: "FeatureCollection", features: []};
-		for (let line of data) {
-			for (let segment of line.segments) {
-				let feature = {
-					type: "Feature",
-					geometry: segment.geometry,
-					properties: {
-						name: line.name,
-						color: line.color,
-					},
-				};
-				geoJSON.features.push(feature);
-			}
-		}
-		return geoJSON;
-	};
-
-	const getTramData = (data: Tram[]) => {
-		let geoJSON = {type: "FeatureCollection", features: []};
-		for (let tram of data) {
-			let feature = {
-				type: "Feature",
-				geometry: {
-					type: "Point",
-					coordinates: getTramLocation(tram, lineData),
-				},
-				properties: {
-					name: tram.route_name,
-					color: lineData.find((l) => l.name == tram.route_name)?.color,
-				},
-			};
-			geoJSON.features.push(feature);
-		}
-		return geoJSON;
-	};
-	// TODO: up until here ////
 
 	const [map, setMap] = useState<Map>(null);
 
@@ -128,7 +75,7 @@ export default function TramMap({lineData, stationData, tramData}: { lineData: L
 		className: "trams",
 		visible: true,
 		source: new VectorSource({
-			features: new GeoJSON().readFeatures(getTramData(tramData), {
+			features: new GeoJSON().readFeatures(getTramData(tramData, lineData), {
 				featureProjection: view.getProjection(),
 			})
 		}),
@@ -145,7 +92,7 @@ export default function TramMap({lineData, stationData, tramData}: { lineData: L
 
 	useEffect(() => {
 		map?.getAllLayers().find((v) => v.getClassName().startsWith("trams"))?.setSource(new VectorSource({
-			features: new GeoJSON().readFeatures(getTramData(tramData), {
+			features: new GeoJSON().readFeatures(getTramData(tramData, lineData), {
 				featureProjection: view.getProjection(),
 			})
 		}))
