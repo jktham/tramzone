@@ -20,7 +20,7 @@ import { getStationData, getTramData, getLineData } from "../utils/dataUtils";
 
 export default function TramMap({lineData, stationData, tramData}: { lineData: Line[]; stationData: Station[]; tramData: Tram[]; }) {
 
-	const [map, setMap] = useState<Map>(null);
+  const [map, setMap] = useState<Map>(null);
 
 	const view = new View({
 		center: OlProj.fromLonLat([8.5417, 47.3769]),
@@ -112,9 +112,34 @@ export default function TramMap({lineData, stationData, tramData}: { lineData: L
 		);
 
 		map.on("click", function (e) {
+			let selectedFeature;
+            let hasTramFeatures = map.hasFeatureAtPixel(e.pixel, {layerFilter: function(layerCandidate) {
+                return layerCandidate.getClassName() === "trams";
+            }});
+            let hasStationFeatures = map.hasFeatureAtPixel(e.pixel, {layerFilter: function(layerCandidate) {
+                return layerCandidate.getClassName() === "stations";
+            }});
+            let hasLineFeatures = map.hasFeatureAtPixel(e.pixel, {layerFilter: function(layerCandidate) {
+                return layerCandidate.getClassName() === "lines";
+            }});
+
 			map.forEachFeatureAtPixel(e.pixel, function (feature, layer) {
-				console.log(feature);
-			});
+                let layerClassName = layer.getClassName();
+                if (selectedFeature) {}
+                else {
+                if (!hasTramFeatures && !hasStationFeatures) {selectedFeature = feature;}
+                else if (!hasTramFeatures) {
+                    if (layerClassName === "stations") {selectedFeature = feature;}
+                }
+                else {
+                    if (layerClassName === "trams") selectedFeature = feature;
+                }
+                }
+                let clickedCoords = e.coordinate;
+                console.log(layer.getClassName());
+                overlayLayer.setPosition(clickedCoords);
+            });
+            console.log(selectedFeature.values_.name);
 		});
 
 		setMap(map)
