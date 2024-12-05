@@ -14,9 +14,8 @@ export default function Home() {
 
 	const onClick = (target : any) => {
 		setFocus(target);
-		console.log(target);
+		console.log(target?.values_);
 	}
-
 
 	if (linesLoading || stationsLoading || tramsLoading)
 		return <div>Is Loading...</div>

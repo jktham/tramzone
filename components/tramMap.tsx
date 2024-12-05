@@ -21,7 +21,6 @@ import Overlay from "ol/Overlay";
 const TramMap = forwardRef(function TramMap({onClick, focus, lineData, stationData, tramData}: { onClick : (target : any) => void; focus : any; lineData: Line[]; stationData: Station[]; tramData: Tram[]; }, ref) {
     // STATES AND REFS
     const [map, setMap] = useState<Map>(null);
-    const [currentFeature, setCurrentFeature] = useState<Feature>(new Feature({name: "new"}));
 
     const overlayRef = useRef(null);
 
@@ -151,9 +150,9 @@ const TramMap = forwardRef(function TramMap({onClick, focus, lineData, stationDa
                 overlayLayer.setPosition(clickedCoords);
 
             });
-            setCurrentFeature(selectedFeature);
-            console.log(selectedFeature?.values_.name);
-            console.log(selectedFeature?.values_);
+			onClick(selectedFeature);
+            console.log(selectedFeature);
+            // console.log(selectedFeature?.values_);
 		});
 
 		setMap(map)
@@ -166,7 +165,7 @@ const TramMap = forwardRef(function TramMap({onClick, focus, lineData, stationDa
 
 	return (
 		<>
-			<div ref={ref} onClick={onclick} id="map" style={{width: "100%", height: "100%"}}/>
+			<div ref={ref} id="map" style={{width: "100%", height: "100%"}}/>
 			{/*<PopUpWindow feature={currentFeature} ref={overlayRef}></PopUpWindow>*/}
 		</>
 	);
