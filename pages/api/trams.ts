@@ -6,6 +6,7 @@ type QueryParams = {
 	active: boolean; // return only currently active trams
 	line: string; // return only trams belonging to line (route_name)
 	station: number; // return only trams with stops at station (diva_id)
+	static: boolean; // dont add delays, much faster because no rt fetch
 };
 
 type ResponseData = Tram[] | string;
@@ -20,6 +21,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 		active: req.query.active === "true" || false,
 		line: (req.query.line && req.query.line.toString()) || "",
 		station: Number(req.query.station) || 0,
+		static: req.query.static === "true" || false,
 	};
 
 	const test_key = "57c5dbbbf1fe4d000100001842c323fa9ff44fbba0b9b925f0c052d1";
@@ -71,10 +73,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 		return false;
 	});
 
-	let realtime = await gtfs_realtime;
+	let realtime = query.static ? {"Entity": []} : await gtfs_realtime;
 
 	let tripIds: Set<string> = new Set(tramTrips.map((t) => t.trip_id));
-	let tripUpdates: TripUpdate[] = realtime["Entity"].filter((e) => tripIds.has(e["Id"])).map((t) => {
+	let tripUpdates: TripUpdate[] = realtime["Entity"].filter((e) => tripIds.has(e["Id"])).map((t) => { // todo: ScheduleRelationship
 		return {
 			trip_id: t["TripUpdate"]["Trip"]["TripId"],
 			trip_time: t["TripUpdate"]["Trip"]["StartTime"],
@@ -132,15 +134,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 				};
 			}),
 		};
-	});
-
-	// disable delays
-	trams.map((t) => {
-		t.delay = 0;
-		t.stops.map((s) => {
-			s.arrival_delay = 0;
-			s.departure_delay = 0;
-		});
 	});
 
 	trams = trams.map((t) => {

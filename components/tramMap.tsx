@@ -151,6 +151,7 @@ export default function TramMap({onClick, focus, lineData, stationData, tramData
             });
             setCurrentFeature(selectedFeature);
             console.log(selectedFeature.values_.name);
+            console.log(selectedFeature.values_);
 		});
 
 		setMap(map)
