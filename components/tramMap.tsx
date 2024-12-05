@@ -137,7 +137,6 @@ export default function TramMap({lineData, stationData, tramData}: { lineData: L
                 }
                 let clickedCoords = e.coordinate;
                 console.log(layer.getClassName());
-                overlayLayer.setPosition(clickedCoords);
             });
             console.log(selectedFeature.values_.name);
 		});
