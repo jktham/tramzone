@@ -1,4 +1,4 @@
-import {useEffect, useState} from "react";
+import {useEffect, useState, useRef} from "react";
 import "ol/ol.css";
 import Map from "ol/Map";
 import View from "ol/View";
@@ -17,11 +17,19 @@ import "../utils/types";
 import {Layer} from "ol/layer";
 import ol from "ol/dist/ol";
 import { getStationData, getTramData, getLineData } from "../utils/dataUtils";
+import PopUpWindow from "./overlay";
+import { Feature } from "ol";
+import Overlay from "ol/Overlay";
+
 
 export default function TramMap({lineData, stationData, tramData}: { lineData: Line[]; stationData: Station[]; tramData: Tram[]; }) {
+    // STATES AND REFS
+    const [map, setMap] = useState<Map>(null);
+    const [currentFeature, setCurrentFeature] = useState<Feature>(new Feature({name: "new"}));
 
-  const [map, setMap] = useState<Map>(null);
+    const overlayRef = useRef(null);
 
+    // SET UP THE MAP
 	const view = new View({
 		center: OlProj.fromLonLat([8.5417, 47.3769]),
 		zoom: 15,
@@ -111,6 +119,11 @@ export default function TramMap({lineData, stationData, tramData}: { lineData: L
 			})
 		);
 
+        const overlayLayer = new Overlay({
+            element:overlayRef.current
+          });
+        map.addOverlay(overlayLayer);
+
 		map.on("click", function (e) {
 			let selectedFeature;
             let hasTramFeatures = map.hasFeatureAtPixel(e.pixel, {layerFilter: function(layerCandidate) {
@@ -137,7 +150,10 @@ export default function TramMap({lineData, stationData, tramData}: { lineData: L
                 }
                 let clickedCoords = e.coordinate;
                 console.log(layer.getClassName());
+                overlayLayer.setPosition(clickedCoords);
+
             });
+            setCurrentFeature(selectedFeature);
             console.log(selectedFeature.values_.name);
 		});
 
@@ -152,6 +168,7 @@ export default function TramMap({lineData, stationData, tramData}: { lineData: L
 	return (
 		<>
 			<div id="map" style={{width: "100%", height: "100%"}}/>
+            <PopUpWindow feature={currentFeature} ref={overlayRef}></PopUpWindow>
 		</>
 	);
 }
