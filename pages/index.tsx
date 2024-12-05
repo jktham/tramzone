@@ -13,7 +13,8 @@ export default function Home() {
 
 
 	const onClick = (target : any) => {
-
+		setFocus(target);
+		console.log(target);
 	}
 
 

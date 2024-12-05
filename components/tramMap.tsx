@@ -1,4 +1,4 @@
-import {useEffect, useState, useRef} from "react";
+import {useEffect, useState, useRef, forwardRef} from "react";
 import "ol/ol.css";
 import Map from "ol/Map";
 import View from "ol/View";
@@ -18,7 +18,7 @@ import { Feature } from "ol";
 import Overlay from "ol/Overlay";
 
 
-export default function TramMap({onClick, focus, lineData, stationData, tramData}: { onClick : (target : any) => void; focus : any; lineData: Line[]; stationData: Station[]; tramData: Tram[]; }) {
+const TramMap = forwardRef(function TramMap({onClick, focus, lineData, stationData, tramData}: { onClick : (target : any) => void; focus : any; lineData: Line[]; stationData: Station[]; tramData: Tram[]; }, ref) {
     // STATES AND REFS
     const [map, setMap] = useState<Map>(null);
     const [currentFeature, setCurrentFeature] = useState<Feature>(new Feature({name: "new"}));
@@ -43,6 +43,7 @@ export default function TramMap({onClick, focus, lineData, stationData, tramData
 	});
 
 	const lineLayer = new VectorLayer({
+		className: "lines",
 		visible: true,
 		source: new VectorSource({
 			features: new GeoJSON().readFeatures(getLineData(lineData), {
@@ -59,6 +60,7 @@ export default function TramMap({onClick, focus, lineData, stationData, tramData
 	});
 
 	const stationLayer = new VectorLayer({
+		className: "stations",
 		visible: true,
 		source: new VectorSource({
 			features: new GeoJSON().readFeatures(getStationData(stationData), {
@@ -164,8 +166,9 @@ export default function TramMap({onClick, focus, lineData, stationData, tramData
 
 	return (
 		<>
-			<div id="map" style={{width: "100%", height: "100%"}}/>
+			<div ref={ref} onClick={onclick} id="map" style={{width: "100%", height: "100%"}}/>
 			{/*<PopUpWindow feature={currentFeature} ref={overlayRef}></PopUpWindow>*/}
 		</>
 	);
-}
+});
+export default TramMap;
