@@ -113,6 +113,15 @@ export default async function handler(
     };
   });
 
+  // disable delays
+  trams.map((t) => {
+    t.delay = 0;
+    t.stops.map((s) => {
+      s.arrival_delay = 0;
+      s.departure_delay = 0;
+    });
+  });
+
   trams = trams.map((t) => {
     let time = new Date().getTime();
     t.stops = t.stops.map((s) => {
