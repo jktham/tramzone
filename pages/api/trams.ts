@@ -29,9 +29,47 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 		},
 	}).then((res) => res.json());
 
+	let today = new Date();
+	today.setHours(0, 0, 0, 0);
 	let weekday = (new Date().getDay() + 6) % 7; // mon=0
-	let tramTrips: TramTrip[] = JSON.parse((await fs.readFile(`data/parsed/tramTrips${weekday}.json`)).toString()); // todo: next day
-	// tramTrips = tramTrips.filter((t) => t.service_days[weekday] == 1)
+
+	let tramTrips: TramTrip[] = JSON.parse((await fs.readFile(`data/parsed/tramTrips${weekday}.json`)).toString());
+	let services: Service[] = JSON.parse((await fs.readFile(`data/parsed/services.json`)).toString());
+	let serviceExceptions: ServiceException[] = JSON.parse((await fs.readFile(`data/parsed/serviceExceptions.json`)).toString());
+
+	let servicesMap: Map<string, Service> = new Map();
+	services.map((s) => {
+		servicesMap.set(s.service_id, s);
+	});
+	let exceptionsMap: Map<string, ServiceException[]> = new Map();
+	serviceExceptions.map((s) => {
+		if (exceptionsMap.has(s.service_id)) {
+			exceptionsMap.set(s.service_id, [s, ...exceptionsMap.get(s.service_id)]);
+		} else {
+			exceptionsMap.set(s.service_id, [s]);
+		}
+	});
+	tramTrips = tramTrips.filter((t) => {
+		let exceptions = exceptionsMap.get(t.service_id);
+		if (exceptions) {
+			for (let e of exceptions) {
+				if (today.getTime() == e.date && e.type == 2) {
+					return false;
+				}
+				if (today.getTime() == e.date && e.type == 1) {
+					return true;
+				}
+			}
+		}
+
+		let service = servicesMap.get(t.service_id);
+		if (today.getTime() >= service.start && today.getTime() <= service.end) {
+			if (service.days[weekday] == 1) {
+				return true;
+			}
+		}
+		return false;
+	});
 
 	let realtime = await gtfs_realtime;
 
@@ -62,7 +100,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 		stationsMap.set(s.id, s);
 	});
 
-	let today = new Date().setHours(0, 0, 0, 0);
 	let trams: Tram[] = tramTrips.map((t) => {
 		let update: TripUpdate = tripUpdatesMap.get(t.trip_id);
 		return {
@@ -84,8 +121,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 					stop_diva: station.diva,
 					stop_name: station.name,
 					stop_sequence: s.stop_sequence,
-					arrival: today + s.arrival,
-					departure: today + s.departure,
+					arrival: today.getTime() + s.arrival,
+					departure: today.getTime() + s.departure,
 					arrival_delay: update?.stops?.find((us) => us.stop_id == s.stop_id)?.arrival_delay || 0,
 					departure_delay: update?.stops?.find((us) => us.stop_id == s.stop_id)?.departure_delay || 0,
 					pred_arrival: 0,

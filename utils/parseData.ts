@@ -33,14 +33,36 @@ function getUpdateDate() {
 	return dateString;
 }
 
-function getTimeFromString(time: string) {
-	// time only
-	let h = Number(time.split(":")[0]);
-	let m = Number(time.split(":")[1]);
-	let s = Number(time.split(":")[2]);
-	let d = new Date(0);
-	d.setHours(h, m, s, 0);
-	return d.getTime();
+function getTimeFromString(timeString: string) {
+	let h = Number(timeString.split(":")[0]);
+	let m = Number(timeString.split(":")[1]);
+	let s = Number(timeString.split(":")[2]);
+
+	let date = new Date(0);
+	date.setHours(h, m, s, 0);
+	return date.getTime();
+}
+
+function getDateFromString(dateString: string) {
+	let y = Number(dateString.slice(0, 4));
+	let m = Number(dateString.slice(4, 6));
+	let d = Number(dateString.slice(6, 8));
+
+	let date = new Date(0);
+	date.setFullYear(y, m-1, d);
+	date.setHours(0, 0, 0, 0);
+	return date.getTime();
+}
+
+async function parseCSV(path: string) {
+	let csv = await fs.readFile(path);
+	let raw = [];
+	for (let line of csv.toString().split("\r\n")) {
+		let r = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+		raw.push(r);
+	}
+	raw.shift(); // column names
+	return raw;
 }
 
 async function getGtfs() {
@@ -78,14 +100,7 @@ async function parseGtfs() {
 
 	// routes
 	console.log("parsing gtfs routes");
-	let routesCsv = await fs.readFile(`data/gtfs/${date}/routes.txt`);
-	let routesRaw = [];
-	for (let line of routesCsv.toString().split("\r\n")) {
-		let r = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
-		routesRaw.push(r);
-	}
-	routesRaw.shift();
-
+	let routesRaw = await parseCSV(`data/gtfs/${date}/routes.txt`);
 	let routes: Route[] = routesRaw.map((r) => {
 		return {
 			route_id: r[0]?.replace(/['"]+/g, ""),
@@ -99,14 +114,7 @@ async function parseGtfs() {
 
 	// trips
 	console.log("parsing gtfs trips");
-	let tripsCsv = await fs.readFile(`data/gtfs/${date}/trips.txt`);
-	let tripsRaw = [];
-	for (let line of tripsCsv.toString().split("\r\n")) {
-		let t = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
-		tripsRaw.push(t);
-	}
-	tripsRaw.shift();
-
+	let tripsRaw = await parseCSV(`data/gtfs/${date}/trips.txt`);
 	let trips: Trip[] = tripsRaw.map((t) => {
 		return {
 			trip_id: t[2]?.replace(/['"]+/g, ""),
@@ -126,7 +134,7 @@ async function parseGtfs() {
 
 	let first = true;
 	let tripIds = new Set(trips.map((t) => t.trip_id));
-	let filteredWriteStream = createWriteStream("data/parsed/stopTimesFiltered.csv");
+	let stopTimesFilteredWriteStream = createWriteStream("data/parsed/stopTimesFiltered.csv");
 	await new Promise<void>((resolve) => {
 		let rd = readline.createInterface({
 			input: createReadStream(`data/gtfs/${date}/stop_times.txt`), // big ass file
@@ -136,7 +144,7 @@ async function parseGtfs() {
 		rd.on("line", function (line) {
 			let trip_id = line.split(",")[0].replace(/['"]+/g, "");
 			if (first || tripIds.has(trip_id)) {
-				filteredWriteStream.write(line + "\n");
+				stopTimesFilteredWriteStream.write(line + "\n");
 			}
 			first = false;
 		});
@@ -148,17 +156,17 @@ async function parseGtfs() {
 
 	console.log("parsing gtfs stop times");
 
-	let readStream = createReadStream("data/parsed/stopTimesFiltered.csv");
-	let writeStream = createWriteStream("data/parsed/stopTimes.json");
+	let stopTimesReadStream = createReadStream("data/parsed/stopTimesFiltered.csv");
+	let stopTimesWriteStream = createWriteStream("data/parsed/stopTimes.json");
 
-	writeStream.on("drain", () => {
-		readStream.resume();
+	stopTimesWriteStream.on("drain", () => {
+		stopTimesReadStream.resume();
 	});
-	writeStream.write("[");
+	stopTimesWriteStream.write("[");
 
 	let sep = "";
 	await new Promise<void>((resolve) => {
-		readStream
+		stopTimesReadStream
 		.pipe(csv())
 		.on("data", (row) => {
 			let station: StopTime = {
@@ -168,8 +176,8 @@ async function parseGtfs() {
 				stop_id: row["stop_id"]?.replace(/['"]+/g, ""),
 				stop_sequence: Number(row["stop_sequence"]?.replace(/['"]+/g, "")),
 			};
-			if (!writeStream.write(sep + JSON.stringify(station))) {
-				readStream.pause();
+			if (!stopTimesWriteStream.write(sep + JSON.stringify(station))) {
+				stopTimesReadStream.pause();
 			}
 			if (sep == "") {
 				sep = ",";
@@ -179,19 +187,15 @@ async function parseGtfs() {
 			resolve();
 		});
 	});
-	writeStream.write("]");
+	stopTimesWriteStream.write("]");
 
 	// calendar
-	console.log("parsing services");
+	console.log("parsing gtfs services");
 
-	let servicesCsv = await fs.readFile(`data/gtfs/${date}/calendar.txt`);
-	let servicesRaw = [];
-	for (let line of servicesCsv.toString().split("\r\n")) {
-		let s = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
-		servicesRaw.push(s);
+	let servicesRaw = await parseCSV(`data/gtfs/${date}/calendar.txt`);
+	if (!servicesRaw[servicesRaw.length-1][0]) {
+		servicesRaw.pop(); // trailing newline sometimes?
 	}
-	servicesRaw.shift();
-
 	let services: Service[] = servicesRaw.map((s) => {
 		return {
 			service_id: s[0]?.replace(/['"]+/g, ""),
@@ -204,23 +208,74 @@ async function parseGtfs() {
 				Number(s[6]?.replace(/['"]+/g, "")),
 				Number(s[7]?.replace(/['"]+/g, "")),
 			],
+			start: getDateFromString(s[8]?.replace(/['"]+/g, "")),
+			end: getDateFromString(s[9]?.replace(/['"]+/g, "")),
 		};
 	});
 	await fs.writeFile("data/parsed/services.json", JSON.stringify(services));
+
+	// calendar_dates
+	console.log("filtering gtfs service exceptions");
+
+	first = true;
+	let serviceIds = new Set(trips.map((t) => t.service_id));
+	let ServiceExceptionsfilteredWriteStream = createWriteStream("data/parsed/serviceExceptionsFiltered.csv");
+	await new Promise<void>((resolve) => {
+		let rd = readline.createInterface({
+			input: createReadStream(`data/gtfs/${date}/calendar_dates.txt`),
+			terminal: false,
+		});
+
+		rd.on("line", function (line) {
+			let service_id = line.split(",")[0].replace(/['"]+/g, "");
+			if (first || serviceIds.has(service_id)) {
+				ServiceExceptionsfilteredWriteStream.write(line + "\n");
+			}
+			first = false;
+		});
+
+		rd.on("close", function () {
+			resolve();
+		});
+	});
+
+	console.log("parsing gtfs service exceptions")
+	let serviceExceptionsReadStream = createReadStream("data/parsed/serviceExceptionsFiltered.csv");
+	let serviceExceptionsWriteStream = createWriteStream("data/parsed/serviceExceptions.json");
+
+	serviceExceptionsWriteStream.on("drain", () => {
+		serviceExceptionsReadStream.resume();
+	});
+	serviceExceptionsWriteStream.write("[");
+
+	sep = "";
+	await new Promise<void>((resolve) => {
+		serviceExceptionsReadStream
+		.pipe(csv())
+		.on("data", (row) => {
+			let serviceException: ServiceException = {
+				service_id: String(Object.values(row)[0])?.replace(/['"]+/g, ""),
+				date: getDateFromString(row["date"]?.replace(/['"]+/g, "")),
+				type: Number(row["exception_type"]?.replace(/['"]+/g, "")),
+			};
+			if (!serviceExceptionsWriteStream.write(sep + JSON.stringify(serviceException))) {
+				serviceExceptionsReadStream.pause();
+			}
+			if (sep == "") {
+				sep = ",";
+			}
+		})
+		.on("end", () => {
+			resolve();
+		});
+	});
+	serviceExceptionsWriteStream.write("]");
 }
 
 async function parseStations() {
 	console.log("parsing dataset stations");
 
-	let csv = await fs.readFile("data/datasets/stations.csv");
-	let lines = csv.toString().split("\n");
-	let stationsRaw = [];
-	for (let line of lines) {
-		let s = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
-		stationsRaw.push(s);
-	}
-	stationsRaw.shift();
-
+	let stationsRaw = await parseCSV("data/datasets/stations.csv");
 	let stations: Station[] = stationsRaw.map((s) => {
 		return {
 			id: Number(s[0]),

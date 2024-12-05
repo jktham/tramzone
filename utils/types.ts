@@ -71,6 +71,14 @@ type TramTrip = {
 type Service = {
 	service_id: string,
 	days: number[],
+	start: number,
+	end: number,
+}
+
+type ServiceException = {
+	service_id: string,
+	date: number,
+	type: number, // 1: added, 2: deleted
 }
 
 type TripUpdate = {
