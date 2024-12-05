@@ -12,10 +12,10 @@ import csv from "csv-parser";
 import readline from "node:readline";
 import { convertLV95toWGS84 } from "../utils/mapUtils";
 
-function getDate() {
+function getUpdateDate() {
   // new gtfs data every monday and thursday (static at 10:00, rt at 15:00)
   let updateTime = new Date();
-  updateTime.setHours(15, 30, 0, 0);
+  updateTime.setHours(15, 0, 0, 0);
 
   let monday = new Date();
   monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
@@ -35,13 +35,12 @@ function getDate() {
     thursday.setDate(thursday.getDate() - 7);
   }
 
-  let date = new Date(Math.max(monday.getTime(), thursday.getTime()))
-    .toISOString()
-    .substring(0, 10);
-  return date;
+  let date = new Date(Math.max(monday.getTime(), thursday.getTime()));
+  let dateString = `${date.getFullYear()}-${("0" + (date.getMonth()+1)).slice(-2)}-${("0" + date.getDate()).slice(-2)}`;
+  return dateString;
 }
 
-function getISO(time: string) {
+function getTimeFromString(time: string) {
   // time only
   let h = Number(time.split(":")[0]);
   let m = Number(time.split(":")[1]);
@@ -52,7 +51,7 @@ function getISO(time: string) {
 }
 
 async function getGtfs() {
-  let date = getDate();
+  let date = getUpdateDate();
 
   // get static data
   if (!(await fs.readdir("data/gtfs/")).includes(`${date}`)) {
@@ -89,7 +88,7 @@ async function getGtfs() {
 }
 
 async function parseGtfs() {
-  let date = getDate();
+  let date = getUpdateDate();
 
   // routes
   console.log("parsing gtfs routes");
@@ -180,8 +179,8 @@ async function parseGtfs() {
       .on("data", (row) => {
         let station: StopTime = {
           trip_id: String(Object.values(row)[0])?.replace(/['"]+/g, ""), // for some reason using the key doesnt work
-          arrival: getISO(row["arrival_time"]?.replace(/['"]+/g, "")),
-          departure: getISO(row["departure_time"]?.replace(/['"]+/g, "")),
+          arrival: getTimeFromString(row["arrival_time"]?.replace(/['"]+/g, "")),
+          departure: getTimeFromString(row["departure_time"]?.replace(/['"]+/g, "")),
           stop_id: row["stop_id"]?.replace(/['"]+/g, ""),
           stop_sequence: Number(row["stop_sequence"]?.replace(/['"]+/g, "")),
         };
@@ -393,7 +392,7 @@ async function generateTramTrips() {
   }
 }
 
-async function main() {
+async function parseData() {
   if (!(await fs.stat("data/gtfs/").catch((e) => false))) {
     await fs.mkdir("data/gtfs/");
   }
@@ -410,4 +409,4 @@ async function main() {
   console.log("done");
 }
 
-main();
+parseData();

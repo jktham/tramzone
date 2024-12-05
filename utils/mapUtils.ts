@@ -88,8 +88,8 @@ export function getTramLocation(tram: Tram, lines: Line[]) {
       let p_scaled = p_dist / (s.p_end - s.p_start);
       
       let coords = [
-        s.a[0] * p_scaled + s.b[0] * (1-p_scaled),
-        s.a[1] * p_scaled + s.b[1] * (1-p_scaled),
+        s.a[0] * (1-p_scaled) + s.b[0] * p_scaled,
+        s.a[1] * (1-p_scaled) + s.b[1] * p_scaled,
       ];
       return coords;
     }
