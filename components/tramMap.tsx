@@ -6,23 +6,19 @@ import TileLayer from "ol/layer/Tile";
 import StadiaMaps from "ol/source/StadiaMaps";
 import OSM from "ol/source/OSM";
 import * as OlProj from "ol/proj";
-import {getTramLocation, grayscaleLayer} from "../utils/mapUtils";
-import RenderEvent from "ol/render/Event";
 import VectorLayer from "ol/layer/Vector";
 import VectorSource from "ol/source/Vector";
 import GeoJSON from "ol/format/GeoJSON";
 import Style from "ol/style/Style.js";
-import {Circle, Stroke, Fill} from "ol/style.js";
+import {Circle, Fill, Stroke} from "ol/style.js";
 import "../utils/types";
-import {Layer} from "ol/layer";
-import ol from "ol/dist/ol";
-import { getStationData, getTramData, getLineData } from "../utils/dataUtils";
+import {getLineData, getStationData, getTramData} from "../utils/dataUtils";
 import PopUpWindow from "./overlay";
 import { Feature } from "ol";
 import Overlay from "ol/Overlay";
 
 
-export default function TramMap({lineData, stationData, tramData}: { lineData: Line[]; stationData: Station[]; tramData: Tram[]; }) {
+export default function TramMap({onClick, focus, lineData, stationData, tramData}: { onClick : (target : any) => void; focus : any; lineData: Line[]; stationData: Station[]; tramData: Tram[]; }) {
     // STATES AND REFS
     const [map, setMap] = useState<Map>(null);
     const [currentFeature, setCurrentFeature] = useState<Feature>(new Feature({name: "new"}));
@@ -168,7 +164,7 @@ export default function TramMap({lineData, stationData, tramData}: { lineData: L
 	return (
 		<>
 			<div id="map" style={{width: "100%", height: "100%"}}/>
-            <PopUpWindow feature={currentFeature} ref={overlayRef}></PopUpWindow>
+			{/*<PopUpWindow feature={currentFeature} ref={overlayRef}></PopUpWindow>*/}
 		</>
 	);
 }
