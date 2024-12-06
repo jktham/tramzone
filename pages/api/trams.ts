@@ -7,6 +7,7 @@ type QueryParams = {
 	line: string; // return only trams belonging to line (route_name)
 	station: number; // return only trams with stops at station (diva_id)
 	static: boolean; // dont add delays, much faster because no rt fetch
+	timeOffset: number; // return trams with time offset by this (ms timestamp, -3600000 = one hour ago)
 };
 
 type ResponseData = Tram[] | string;
@@ -22,6 +23,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 		line: (req.query.line && req.query.line.toString()) || "",
 		station: Number(req.query.station) || 0,
 		static: req.query.static === "true" || false,
+		timeOffset: Number(req.query.timeOffset) || 0,
 	};
 
 	const test_key = "57c5dbbbf1fe4d000100001842c323fa9ff44fbba0b9b925f0c052d1";
@@ -32,9 +34,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 		},
 	}).then((res) => res.json());
 
-	let today = new Date();
+	let today = new Date(new Date().getTime() + query.timeOffset);
 	today.setHours(0, 0, 0, 0);
-	let weekday = (new Date().getDay() + 6) % 7; // mon=0
+	let weekday = (today.getDay() + 6) % 7; // mon=0
 
 	let tramTrips: TramTrip[] = JSON.parse((await fs.readFile(`data/parsed/tramTrips${weekday}.json`)).toString());
 	let services: Service[] = JSON.parse((await fs.readFile(`data/parsed/services.json`)).toString());
@@ -75,6 +77,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 	});
 
 	let realtime = query.static ? {"Entity": []} : await gtfs_realtime;
+	if (realtime?.error) {
+		console.log(realtime)
+		realtime = {"Entity": []}
+	}
 
 	let tripIds: Set<string> = new Set(tramTrips.map((t) => t.trip_id));
 	let tripUpdates: TripUpdate[] = realtime["Entity"].filter((e) => tripIds.has(e["Id"])).map((t) => { // todo: ScheduleRelationship
@@ -138,7 +144,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 	});
 
 	trams = trams.map((t) => {
-		let time = new Date().getTime();
+		let time = new Date().getTime() + query.timeOffset;
 		t.stops = t.stops.map((s) => {
 			s.pred_arrival = s.arrival + s.arrival_delay * 1000;
 			s.pred_departure = s.departure + s.departure_delay * 1000;
