@@ -8,6 +8,10 @@
 	scroll-behavior: smooth;
 }
 
+html {
+	font-size: 1.25rem;
+}
+
 html,
 body,
 #__next {

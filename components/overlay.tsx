@@ -1,25 +1,24 @@
-import { Feature } from "ol";
-import { forwardRef } from "react";
+import styles from "../styles/overlay.module.css"
 
-const PopUpWindow = forwardRef(function PopUpWindow({feature}: Feature, ref) {
-    const values = feature.values_;
-    const type = values.type;
-    let name;
+export default function Overlay({data} : any) {
 
-    if (type === "tram") {
-        name = values.route_name;
-    }
-    if (type === "station") {
-        name = values.name;
-    }
-    if (type === "line") {
-        name = values.name;
-    }
-    
-    return (
-        <>
-        <div ref={ref}>{name}</div>
-        </>
-    );
-});
-export default PopUpWindow;
+    const type = data.type
+
+    const isTram = type === "tram";
+    const isLine = type === "line";
+    const isStation = type === "station";
+
+
+    const title = isTram ? ("Tram " + data.route_name + " " + data.trip_name) : isStation ? data.name : "Line " + data.name;
+
+    console.log(data)
+
+    return <>
+        <div className={styles.overlay}>
+            <div className={styles.titleBar}>
+                {isStation ? <></> : <span style={{background: data.color}} className={styles.lineIcon}>{isLine ? data.name : data.route_name}</span>}
+                <h1>{title}</h1>
+            </div>
+        </div>
+    </>
+}

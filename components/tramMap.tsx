@@ -13,9 +13,8 @@ import Style from "ol/style/Style.js";
 import {Circle, Fill, Stroke} from "ol/style.js";
 import "../utils/types";
 import {getLineData, getStationData, getTramData} from "../utils/dataUtils";
-import PopUpWindow from "./overlay";
-import { Feature } from "ol";
 import Overlay from "ol/Overlay";
+import styles from "../styles/tramMap.module.css";
 
 
 const TramMap = forwardRef(function TramMap({onClick, focus, lineData, stationData, tramData}: { onClick : (target : any) => void; focus : any; lineData: Line[]; stationData: Station[]; tramData: Tram[]; }, ref) {
@@ -106,7 +105,7 @@ const TramMap = forwardRef(function TramMap({onClick, focus, lineData, stationDa
 	useEffect(() => {
 		const map = new Map({
 			target: "map",
-			layers: [osmLayer, lineLayer, stationLayer, tramLayer],
+			layers: [stadiaLayer, lineLayer, stationLayer, tramLayer],
 		});
 
 		map.setView(
@@ -146,12 +145,12 @@ const TramMap = forwardRef(function TramMap({onClick, focus, lineData, stationDa
                 }
                 }
                 let clickedCoords = e.coordinate;
-                console.log(layer.getClassName());
+                //console.log(layer.getClassName());
                 overlayLayer.setPosition(clickedCoords);
 
             });
 			onClick(selectedFeature);
-            console.log(selectedFeature);
+            //console.log(selectedFeature);
             // console.log(selectedFeature?.values_);
 		});
 
@@ -165,8 +164,7 @@ const TramMap = forwardRef(function TramMap({onClick, focus, lineData, stationDa
 
 	return (
 		<>
-			<div ref={ref} id="map" style={{width: "100%", height: "100%"}}/>
-			{/*<PopUpWindow feature={currentFeature} ref={overlayRef}></PopUpWindow>*/}
+			<div className={styles.map} id="map" />
 		</>
 	);
 });

@@ -1,6 +1,7 @@
 import useSWR from "swr";
 import TramMap from "../components/tramMap";
 import {useState} from "react";
+import Overlay from "../components/overlay";
 
 const fetcher = (url) => fetch(url).then((res) => res.json());
 
@@ -10,11 +11,14 @@ export default function Home() {
 	const {data: tramData, error: tramsError, isLoading: tramsLoading} = useSWR("/api/trams?active=true", fetcher, {refreshInterval: 1000}); // refresh for testing
 
 	const [focus, setFocus] = useState<any>(null);
-
+	const [overlay, setOverlay] = useState<boolean>(false);
 
 	const onClick = (target : any) => {
+		if (target === undefined)
+			return setOverlay(false);
+
 		setFocus(target);
-		console.log(target?.values_);
+		setOverlay(true);
 	}
 
 	if (linesLoading || stationsLoading || tramsLoading)
@@ -23,6 +27,7 @@ export default function Home() {
 	return (
 		<>
 			<TramMap onClick={onClick} focus={focus} lineData={lineData} stationData={stationData} tramData={tramData}></TramMap>
+			{overlay && <Overlay data={focus.values_}></Overlay>}
 		</>
 	);
 }
