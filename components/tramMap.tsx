@@ -105,7 +105,7 @@ const TramMap = forwardRef(function TramMap({onClick, focus, lineData, stationDa
 	useEffect(() => {
 		const map = new Map({
 			target: "map",
-			layers: [stadiaLayer, lineLayer, stationLayer, tramLayer],
+			layers: [osmLayer, lineLayer, stationLayer, tramLayer],
 		});
 
 		map.setView(
