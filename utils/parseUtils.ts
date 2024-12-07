@@ -1,15 +1,17 @@
 import {
 	promises as fs,
 	createReadStream,
-	createWriteStream 
+	createWriteStream,
+	existsSync 
 } from "node:fs";
 import stream from "node:stream";
 import unzipper from "unzipper";
-import "../utils/types";
+import "./types";
 let shapefile = require("shapefile");
 import csv from "csv-parser";
 import readline from "node:readline";
-import { convertLV95toWGS84 } from "../utils/mapUtils";
+import { convertLV95toWGS84 } from "./mapUtils";
+let AsyncLock = require("async-lock");
 
 function getUpdateDate() {
 	// new gtfs data every monday and thursday (static at 10:00, rt at 15:00)
@@ -65,9 +67,7 @@ async function parseCSV(path: string) {
 	return raw;
 }
 
-async function getGtfs() {
-	let date = getUpdateDate();
-
+async function getGtfs(date: string) {
 	// get static data
 	if (!(await fs.readdir("data/gtfs/")).includes(`${date}`)) {
 		console.log("getting new gtfs data: ", date);
@@ -95,9 +95,7 @@ async function getGtfs() {
 	await fs.writeFile(`data/gtfs/realtime.json`, await gtfs_realtime.text());
 }
 
-async function parseGtfs() {
-	let date = getUpdateDate();
-
+async function parseGtfs(date: string) {
 	// routes
 	console.log("parsing gtfs routes");
 	let routesRaw = await parseCSV(`data/gtfs/${date}/routes.txt`);
@@ -291,7 +289,7 @@ async function parseStations() {
 	let ignoredStations = JSON.parse((await fs.readFile(`data/datasets/ignoredStations.json`)).toString());
 	stations = stations.filter((s) => !ignoredStations.includes(s.id));
 
-	fs.writeFile("data/parsed/stations.json", JSON.stringify(stations));
+	await fs.writeFile("data/parsed/stations.json", JSON.stringify(stations));
 }
 
 async function parseLines() {
@@ -345,7 +343,7 @@ async function parseLines() {
 	};
 	lines.push(extraLine);
 	
-	fs.writeFile("data/parsed/lines.json", JSON.stringify(lines));
+	await fs.writeFile("data/parsed/lines.json", JSON.stringify(lines));
 }
 
 async function generateTramTrips() {
@@ -400,29 +398,41 @@ async function generateTramTrips() {
 	.sort((a, b) => a.trip_id.localeCompare(b.trip_id))
 	.sort((a, b) => Number(a.route_name) - Number(b.route_name));
 
-	fs.writeFile("data/parsed/tramTrips.json", JSON.stringify(tramTrips));
+	await fs.writeFile("data/parsed/tramTrips.json", JSON.stringify(tramTrips));
 
 	for (let i = 0; i < 7; i++) {
 		let tramTrips_day = tramTrips.filter((t) => t.service_days[i] == 1);
-		fs.writeFile(`data/parsed/tramTrips${i}.json`, JSON.stringify(tramTrips_day));
+		await fs.writeFile(`data/parsed/tramTrips${i}.json`, JSON.stringify(tramTrips_day));
 	}
 }
 
-async function parseData() {
-	if (!(await fs.stat("data/gtfs/").catch((e) => false))) {
-		await fs.mkdir("data/gtfs/");
-	}
-	if (!(await fs.stat("data/parsed/").catch((e) => false))) {
-		await fs.mkdir("data/parsed/");
-	}
-
-	await parseLines();
-	await parseStations();
-	await getGtfs();
-	await parseGtfs();
-	await generateTramTrips();
-
-	console.log("done");
+let lock = new AsyncLock();
+export async function parseData(force: boolean) {
+	// console.log("acquiring parse lock")
+	await lock.acquire("parseKey", async () => { // prevent interleaved parsing caused by simultaneous api calls
+		if (force || !existsSync("data/parsed/lastUpdate.json") || JSON.parse((await fs.readFile("data/parsed/lastUpdate.json")).toString()) != getUpdateDate()) {
+			console.log("parsing data");
+	
+			if (!existsSync("data/gtfs/")) {
+				await fs.mkdir("data/gtfs/");
+			}
+			if (!existsSync("data/parsed/")) {
+				await fs.mkdir("data/parsed/");
+			}
+		
+			let date = getUpdateDate();
+			
+			await parseLines();
+			await parseStations();
+			await getGtfs(date);
+			await parseGtfs(date);
+			await generateTramTrips();
+		
+			await fs.writeFile(`data/parsed/lastUpdate.json`, JSON.stringify(date));
+		
+			console.log("done");
+		}
+	});
+	// console.log("releasing parse lock")
 }
 
-parseData();

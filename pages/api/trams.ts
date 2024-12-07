@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import fs from "node:fs/promises";
-import "util/types";
+import "../../utils/types";
+import { parseData } from "../../utils/parseUtils"
 
 type QueryParams = {
 	active: boolean; // return only currently active trams
@@ -13,10 +14,7 @@ type QueryParams = {
 type ResponseData = Tram[] | string;
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<ResponseData>) {
-	if (!(await fs.stat("data/parsed/tramTrips.json").catch((e) => false))) {
-		res.status(500).send("no parsed tramTrips (npm run parse)");
-		return;
-	}
+	await parseData(false)
 
 	let query: QueryParams = {
 		active: req.query.active === "true" || false,
