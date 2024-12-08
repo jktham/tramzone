@@ -155,6 +155,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 		t.stops = t.stops.map((s) => {
 			s.pred_arrival = s.arrival + s.arrival_delay * 1000;
 			s.pred_departure = s.departure + s.departure_delay * 1000;
+			return s;
+		});
+		t.stops = t.stops.map((s) => { // quick fix for scuffed data
+			let ns = t.stops.find((s2) => s2.stop_sequence == s.stop_sequence + 1);
+			if (s.pred_departure <= s.pred_arrival) {
+				s.pred_departure = s.pred_arrival + 5000;
+			}
+			if (ns && s.pred_departure >= ns.pred_arrival) { // try to interpolate inner stop times from 10% - 90%
+				s.pred_departure = (s.pred_arrival*9 + ns.pred_departure*1) / 10;
+				ns.pred_arrival = (s.pred_arrival*1 + ns.pred_departure*9) / 10;
+			}
+			return s;
+		});
+		t.stops = t.stops.map((s) => {
 			s.arrived = s.pred_arrival <= time;
 			s.departed = s.pred_departure <= time;
 
@@ -177,7 +191,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 		if (next_stop) {
 			t.delay = next_stop.arrival_delay;
 		}
-		if (t.progress > 0 && t.progress < t.stops.length) {
+		if (time >= t.stops[0].pred_arrival && time <= t.stops[t.stops.length-1].pred_departure) {
 			t.active = true;
 		}
 
