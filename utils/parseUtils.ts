@@ -413,11 +413,12 @@ async function generateTramTrips() {
 	}
 }
 
+const version = 1;
 let lock = new AsyncLock();
 export async function parseData(force: boolean) {
 	// console.log("acquiring parse lock")
 	await lock.acquire("parseKey", async () => { // prevent interleaved parsing caused by simultaneous api calls
-		if (force || !existsSync("data/parsed/lastUpdate.json") || JSON.parse((await fs.readFile("data/parsed/lastUpdate.json")).toString()) != getUpdateDate()) {
+		if (force || !existsSync("data/parsed/lastUpdate.json") || (await fs.readFile("data/parsed/lastUpdate.json")).toString() != JSON.stringify({date: getUpdateDate(), version: version})) {
 			console.log("parsing data");
 	
 			if (!existsSync("data/gtfs/")) {
@@ -435,7 +436,7 @@ export async function parseData(force: boolean) {
 			await parseGtfs(date);
 			await generateTramTrips();
 		
-			await fs.writeFile(`data/parsed/lastUpdate.json`, JSON.stringify(date));
+			await fs.writeFile(`data/parsed/lastUpdate.json`, JSON.stringify({date: getUpdateDate(), version: version}));
 		
 			console.log("done");
 		}
