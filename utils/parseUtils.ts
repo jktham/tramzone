@@ -84,15 +84,15 @@ async function getGtfs(date: string) {
 		console.log("using old gtfs data: ", date);
 	}
 
-	// get realtime data (test)
-	console.log("getting gtfs-rt data");
-	const test_key = "57c5dbbbf1fe4d000100001842c323fa9ff44fbba0b9b925f0c052d1";
-	let gtfs_realtime = await fetch("https://api.opentransportdata.swiss/gtfsrt2020?format=JSON", {
-		headers: {
-			Authorization: test_key,
-		},
-	});
-	await fs.writeFile(`data/gtfs/realtime.json`, await gtfs_realtime.text());
+	// // get realtime data (test)
+	// console.log("getting gtfs-rt data");
+	// let gtfs_realtime = await fetch("https://api.opentransportdata.swiss/gtfsrt2020?format=JSON", {
+	// 	headers: {
+	// 		Authorization: process.env.KEY_RT,
+	// 		"Accept-Encoding": "gzip, deflate",
+	// 	},
+	// });
+	// await fs.writeFile(`data/gtfs/realtime.json`, await gtfs_realtime.text());
 }
 
 async function parseGtfs(date: string) {
@@ -396,13 +396,20 @@ async function generateTramTrips() {
 	})
 	.sort((a, b) => a.direction - b.direction)
 	.sort((a, b) => a.trip_id.localeCompare(b.trip_id))
-	.sort((a, b) => Number(a.route_name) - Number(b.route_name));
 
 	await fs.writeFile("data/parsed/tramTrips.json", JSON.stringify(tramTrips));
 
 	for (let i = 0; i < 7; i++) {
-		let tramTrips_day = tramTrips.filter((t) => t.service_days[i] == 1);
-		await fs.writeFile(`data/parsed/tramTrips${i}.json`, JSON.stringify(tramTrips_day));
+		let tramTripsDaily = tramTrips.filter((t) => {
+			let offset = 0
+			for (let s of t.stops) {
+				if (s.arrival >= 86400000 || s.departure >= 86400000) { // >24h gtfs times
+					offset = 6;
+				}
+			}
+			return t.service_days[i] == 1 || t.service_days[(i + offset) % 7] == 1 // also keep in previous day for trip overlap
+		});
+		await fs.writeFile(`data/parsed/tramTrips${i}.json`, JSON.stringify(tramTripsDaily));
 	}
 }
 

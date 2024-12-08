@@ -8,6 +8,7 @@ type QueryParams = {
 	line: string; // return only trams belonging to line (route_name)
 	station: number; // return only trams with stops at station (diva_id)
 	static: boolean; // dont add delays, much faster because no rt fetch
+	time: number; // return trams at this time (ms timestamp)
 	timeOffset: number; // return trams with time offset by this (ms timestamp, -3600000 = one hour ago)
 };
 
@@ -21,18 +22,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 		line: (req.query.line && req.query.line.toString()) || "",
 		station: Number(req.query.station) || 0,
 		static: req.query.static === "true" || false,
+		time: Number(req.query.time) || 0,
 		timeOffset: Number(req.query.timeOffset) || 0,
 	};
 
-	const test_key = "57c5dbbbf1fe4d000100001842c323fa9ff44fbba0b9b925f0c052d1";
 	let gtfs_realtime = fetch("https://api.opentransportdata.swiss/gtfsrt2020?format=JSON", {
 		headers: {
-			Authorization: test_key,
+			Authorization: process.env.KEY_RT,
 			"Accept-Encoding": "gzip, deflate",
 		},
 	}).then((res) => res.json());
 
-	let today = new Date(new Date().getTime() + query.timeOffset);
+	let time = query.time || new Date().getTime();
+	time += query.timeOffset;
+
+	let today = new Date(time);
 	today.setHours(0, 0, 0, 0);
 	let weekday = (today.getDay() + 6) % 7; // mon=0
 
@@ -66,10 +70,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 		}
 
 		let service = servicesMap.get(t.service_id);
-		if (today.getTime() >= service.start && today.getTime() <= service.end) {
-			if (service.days[weekday] == 1) {
-				return true;
+		let offset = 0
+		for (let s of t.stops) {
+			if (s.arrival >= 86400000 || s.departure >= 86400000) { // only supports next day for now
+				offset = 6;
+				s.arrival = s.arrival % 86400000;
+				s.departure = s.departure % 86400000;
 			}
+		}
+		if (today.getTime() >= service.start && today.getTime() <= service.end) { // does not consider offset but eh
+			return t.service_days[(weekday + offset) % 7] == 1
 		}
 		return false;
 	});
@@ -142,7 +152,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 	});
 
 	trams = trams.map((t) => {
-		let time = new Date().getTime() + query.timeOffset;
 		t.stops = t.stops.map((s) => {
 			s.pred_arrival = s.arrival + s.arrival_delay * 1000;
 			s.pred_departure = s.departure + s.departure_delay * 1000;
