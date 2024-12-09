@@ -1,0 +1,19 @@
+frontend:
+  image:
+    repository: null
+    tag: latest
+    cmd: ["node"]
+    args: ["server.js"]
+
+  # Port to expose on the pod.
+  port: 3000
+
+  # Path for health check.
+  health: "/"
+
+  # Define extra environment variables for your application
+  extraEnv: |
+  #  - name: DEBUG
+  #    value: true
+
+  url: null
