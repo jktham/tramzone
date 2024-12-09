@@ -1,3 +1,5 @@
+import { Tram, Line } from "./types";
+
 export function grayscaleLayer(context) {
 	let canvas = context.canvas;
 	let width = canvas.width;

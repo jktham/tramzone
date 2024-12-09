@@ -1,8 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import fs from "node:fs/promises"
-import "../../utils/types"
 import { parseData } from "../../utils/parseUtils"
 import { existsSync } from 'node:fs'
+import { ServiceAlert } from '../../utils/types'
 
 type ResponseData = ServiceAlert[] | string
 

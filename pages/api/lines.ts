@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import fs from "node:fs/promises"
-import "../../utils/types"
 import { parseData } from "../../utils/parseUtils"
+import { Line } from '../../utils/types'
 
 type ResponseData = Line[] | string
 

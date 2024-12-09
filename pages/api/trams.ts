@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import fs from "node:fs/promises";
-import "../../utils/types";
+import { Service, ServiceException, Station, StopStatus, Tram, TramTrip, TripStatus, TripUpdate } from "../../utils/types";
 import { parseData } from "../../utils/parseUtils"
 import { existsSync } from "node:fs";
 
@@ -100,15 +100,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 	}
 
 	let tripIds: Set<string> = new Set(tramTrips.map((t) => t.trip_id));
-	let tripUpdates: TripUpdate[] = realtime["Entity"].filter((e) => tripIds.has(e["Id"])).map((t) => { // todo: ScheduleRelationship
+	let tripUpdates: TripUpdate[] = realtime["Entity"].filter((e) => tripIds.has(e["Id"])).map((t) => {
 		return {
 			trip_id: t["TripUpdate"]["Trip"]["TripId"],
 			trip_time: t["TripUpdate"]["Trip"]["StartTime"],
 			trip_date: t["TripUpdate"]["Trip"]["StartDate"],
+			trip_status: String(t["TripUpdate"]["Trip"]["ScheduleRelationship"] || "scheduled").toLowerCase() as TripStatus,
 			stops: t["TripUpdate"]["StopTimeUpdate"]?.map((u) => {
 				return {
 					stop_id: u["StopId"],
 					stop_sequence: u["StopSequence"],
+					stop_status: String(u["ScheduleRelationship"] || "scheduled").toLowerCase() as StopStatus,
 					arrival_delay: u["Arrival"] ? u["Arrival"]["Delay"] : 0,
 					departure_delay: u["Departure"] ? u["Departure"]["Delay"] : 0,
 				};
@@ -131,6 +133,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 		return {
 			trip_id: t.trip_id,
 			trip_name: t.trip_name,
+			trip_status: update?.trip_status || TripStatus.Scheduled,
 			headsign: t.headsign,
 			direction: t.direction,
 			route_id: t.route_id,
@@ -142,15 +145,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 			active: false,
 			stops: t.stops.map((s) => {
 				let station: Station = stationsMap.get(Number(s.stop_id.split(":")[0]));
+				let u = update?.stops?.find((us) => us.stop_id == s.stop_id);
 				return {
 					stop_id: s.stop_id,
 					stop_diva: station.diva,
 					stop_name: station.name,
 					stop_sequence: s.stop_sequence,
+					stop_status: u?.stop_status || StopStatus.Scheduled,
 					arrival: today.getTime() + s.arrival,
 					departure: today.getTime() + s.departure,
-					arrival_delay: update?.stops?.find((us) => us.stop_id == s.stop_id)?.arrival_delay || 0,
-					departure_delay: update?.stops?.find((us) => us.stop_id == s.stop_id)?.departure_delay || 0,
+					arrival_delay: u?.arrival_delay || 0,
+					departure_delay: u?.departure_delay || 0,
 					pred_arrival: 0,
 					pred_departure: 0,
 					arrived: false,
@@ -166,12 +171,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 			s.pred_departure = s.departure + s.departure_delay * 1000;
 			return s;
 		});
-		t.stops = t.stops.map((s) => { // quick fix for scuffed data
+		t.stops = t.stops.map((s) => { // quick fix for scuffed data, todo: handle skipped stops
 			let ns = t.stops.find((s2) => s2.stop_sequence == s.stop_sequence + 1);
-			if (s.pred_departure <= s.pred_arrival) {
+			if (s.pred_departure <= s.pred_arrival && s.stop_status != StopStatus.Skipped) {
 				s.pred_departure = s.pred_arrival + 5000;
 			}
-			if (ns && s.pred_departure >= ns.pred_arrival) { // try to interpolate inner stop times from 10% - 90%
+			if (ns && s.pred_departure >= ns.pred_arrival && ns.stop_status != StopStatus.Skipped) { // try to interpolate inner stop times from 10% - 90%
 				s.pred_departure = (s.pred_arrival*9 + ns.pred_departure*1) / 10;
 				ns.pred_arrival = (s.pred_arrival*1 + ns.pred_departure*9) / 10;
 			}

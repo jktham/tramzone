@@ -1,16 +1,11 @@
-import {
-	promises as fs,
-	createReadStream,
-	createWriteStream,
-	existsSync 
-} from "node:fs";
+import { promises as fs, createReadStream, createWriteStream, existsSync } from "node:fs";
 import stream from "node:stream";
 import unzipper from "unzipper";
-import "./types";
 let shapefile = require("shapefile");
 import csv from "csv-parser";
 import readline from "node:readline";
 import { convertLV95toWGS84 } from "./mapUtils";
+import { Route, Trip, StopTime, Service, ServiceException, Station, Line, Segment, TramTrip } from "./types";
 let AsyncLock = require("async-lock");
 
 function getUpdateDate() {

@@ -1,4 +1,5 @@
 import { getTramLocation } from "./mapUtils";
+import { Station, Line, Tram } from "./types";
 
 export function getStationData (data: Station[]) {
     let geoJson = {type: "FeatureCollection", features: []};

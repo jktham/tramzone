@@ -11,10 +11,10 @@ import VectorSource from "ol/source/Vector";
 import GeoJSON from "ol/format/GeoJSON";
 import Style from "ol/style/Style.js";
 import {Circle, Fill, Stroke} from "ol/style.js";
-import "../utils/types";
 import {getLineData, getStationData, getTramData} from "../utils/dataUtils";
 import Overlay from "ol/Overlay";
 import styles from "../styles/tramMap.module.css";
+import { Line, Station, Tram } from "../utils/types";
 
 // TODO: what is type of target (in onClick) / focus should we even define that?
 export default function TramMap({onClick,  focus, filter, lineData, stationData, tramData} : { onClick : (target : any) => void; focus : any; filter : {}; lineData : Line[]; stationData : Station[]; tramData : Tram[]; }) {
