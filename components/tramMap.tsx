@@ -16,8 +16,8 @@ import {getLineData, getStationData, getTramData} from "../utils/dataUtils";
 import Overlay from "ol/Overlay";
 import styles from "../styles/tramMap.module.css";
 
-
-const TramMap = forwardRef(function TramMap({onClick, focus, lineData, stationData, tramData}: { onClick : (target : any) => void; focus : any; lineData: Line[]; stationData: Station[]; tramData: Tram[]; }, ref) {
+// TODO: what is type of target (in onClick) / focus should we even define that?
+export default function TramMap({onClick,  focus, filter, lineData, stationData, tramData} : { onClick : (target : any) => void; focus : any; filter : {}; lineData : Line[]; stationData : Station[]; tramData : Tram[]; }) {
     // STATES AND REFS
     const [map, setMap] = useState<Map>(null);
 
@@ -51,7 +51,7 @@ const TramMap = forwardRef(function TramMap({onClick, focus, lineData, stationDa
 		style: (feature) =>
 			new Style({
 				stroke: new Stroke({
-					width: 2,
+					width: 3,
 					color: feature.get("color"),
 				}),
 			}),
@@ -69,8 +69,12 @@ const TramMap = forwardRef(function TramMap({onClick, focus, lineData, stationDa
 			image: new Circle({
 				radius: 5,
 				fill: new Fill({
-					color: "#000000",
+					color: "#F2F3F0",
 				}),
+				stroke: new Stroke({
+					width: 3,
+					color: "#000000"
+				})
 			}),
 		}),
 	});
@@ -90,6 +94,10 @@ const TramMap = forwardRef(function TramMap({onClick, focus, lineData, stationDa
 					fill: new Fill({
 						color: feature.get("color"),
 					}),
+					stroke: new Stroke({
+						width: 3,
+						color: "#F2F3F0"
+					})
 				}),
 			}),
 	});
@@ -105,7 +113,7 @@ const TramMap = forwardRef(function TramMap({onClick, focus, lineData, stationDa
 	useEffect(() => {
 		const map = new Map({
 			target: "map",
-			layers: [osmLayer, lineLayer, stationLayer, tramLayer],
+			layers: [stadiaLayer, lineLayer, stationLayer, tramLayer],
 		});
 
 		map.setView(
@@ -167,5 +175,4 @@ const TramMap = forwardRef(function TramMap({onClick, focus, lineData, stationDa
 			<div className={styles.map} id="map" />
 		</>
 	);
-});
-export default TramMap;
+}

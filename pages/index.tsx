@@ -26,7 +26,7 @@ export default function Home() {
 
 	return (
 		<>
-			<TramMap onClick={onClick} focus={focus} lineData={lineData} stationData={stationData} tramData={tramData}></TramMap>
+			<TramMap onClick={onClick} filter={{}} focus={focus} lineData={lineData} stationData={stationData} tramData={tramData}></TramMap>
 			{overlay && <Overlay data={focus.values_}></Overlay>}
 		</>
 	);
