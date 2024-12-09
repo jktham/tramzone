@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import fs from "node:fs/promises";
 import "../../utils/types";
 import { parseData } from "../../utils/parseUtils"
+import { existsSync } from "node:fs";
 
 type QueryParams = {
 	active: boolean; // return only currently active trams
@@ -85,9 +86,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 	});
 
 	let realtime = query.static ? {"Entity": []} : await gtfs_realtime;
-	if (realtime?.error) {
+	
+	// recover from rate limit
+	if (!realtime || realtime.error) {
 		console.log(realtime)
-		realtime = {"Entity": []}
+		if (existsSync("data/gtfs/realtime.json")) {
+			realtime = JSON.parse((await fs.readFile("data/gtfs/realtime.json")).toString());
+		} else {
+			realtime = {"Entity": []};
+		}
+	} else { // todo: performance
+		fs.writeFile("data/gtfs/realtime.json", JSON.stringify(realtime));
 	}
 
 	let tripIds: Set<string> = new Set(tramTrips.map((t) => t.trip_id));

@@ -120,3 +120,14 @@ type Tram = {
 		departed: boolean,
 	}[]
 }
+
+type ServiceAlert = {
+	alert_id: string,
+	agencies: string[],
+	start: number,
+	end: number,
+	cause: string,
+	effect: string,
+	header: string,
+	description: string,
+}
