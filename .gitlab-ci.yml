@@ -1,0 +1,163 @@
+###################################################
+# This is an example pipeline designed to work    #
+# with this helm chart.                           #
+# Please use it and modify it at your discretion. #
+# This example is up-to-date with the latest      #
+# version of the helm chart.                      #
+###################################################
+
+###########################################
+# INCLUDE EXTERNAL TEMPLATES
+###########################################
+include:
+  - project: 'course-fwe2024/helm-chart'
+    ref: main
+    file:
+      - 'gitlab-ci-templates/setup-env-variables.yml'
+      - 'gitlab-ci-templates/define-trigger-rules.yml'
+
+###########################################
+# CONFIGURATION
+###########################################
+stages:
+  - prepare
+  - build
+  - deploy
+  - verify
+
+variables:
+  # Helm Timeout.
+  # Helm will wait until all deployed resources (pods,ingress,etc) show ready state
+  # Increase the timeout if you deploy things that have a long start up time.
+  HELM_TIMEOUT: 10m0s
+  #
+  # Helm chart repository.
+  HELM_CHART: oci://${CI_REGISTRY}/course-fwe2024/helm-chart/ivia-course-fullstack-chart
+  #
+  # very secure secrets
+  KEY_RT: eyJvcmciOiI2NDA2NTFhNTIyZmEwNTAwMDEyOWJiZTEiLCJpZCI6IjdmMThhOTkwNDU5NjQwZTk5ZmYyYTQ1OWQ1NzVjYWIyIiwiaCI6Im11cm11cjEyOCJ9
+  KEY_SA: eyJvcmciOiI2NDA2NTFhNTIyZmEwNTAwMDEyOWJiZTEiLCJpZCI6ImEzNDFiOGI2ZjlkMTQzNjRhMDRmNTA1YzM2MmQ5ZjAzIiwiaCI6Im11cm11cjEyOCJ9
+  KEY_RT_PUBLIC: 57c5dbbbf1fe4d000100001842c323fa9ff44fbba0b9b925f0c052d1
+
+
+###########################################
+# DOCKERIZE
+###########################################
+
+build:kaniko:
+  extends: .deployment-trigger-rules
+  stage: build
+  image:
+    name: gcr.io/kaniko-project/executor:debug
+    entrypoint: [ "" ]
+  # Run parallel builds for multi-arch support. See: https://github.com/GoogleContainerTools/kaniko#building-the-separate-container-images
+  parallel:
+    matrix:
+      - APP_LAYER: frontend
+        ARCH:
+          - amd64
+          - arm64
+      # - APP_LAYER: backend
+      #   ARCH:
+      #     - amd64
+      #     - arm64
+  tags:
+    - runner-${ARCH}
+  # Sometimes, Azure needs more time to scale the GitLab runner node pool up. Therefore, we set the timeout to 10 minutes.
+  timeout: 10m
+  retry: 2
+  before_script:
+    # Copy the docker config to the kaniko executor. This config is used to authenticate with the registry.
+    - echo "${DOCKER_REGISTRY_AUTH}" > /kaniko/.docker/config.json
+  script:
+    # Define the image name.
+    - IMG="${CI_REGISTRY_IMAGE}-${APP_LAYER}:latest-${ARCH}"
+    # Build the image and push it to the registry.
+    - >
+      /kaniko/executor
+      --context "./"
+      --dockerfile "./Dockerfile"
+      --destination $IMG
+      --no-push-cache
+
+# define a job for creating and pushing a merged manifest for multi-arch support. See: https://github.com/GoogleContainerTools/kaniko#merging-the-container-manifests
+build:merge-manifests:
+  extends: .deployment-trigger-rules
+  stage: build
+  # all containers must be build before merging them
+  # alternatively the job may be configured to run in a later stage
+  needs:
+    - job: build:kaniko
+      artifacts: false
+    - job: export-environment
+      artifacts: true
+  image:
+    name: mplatform/manifest-tool:alpine
+    entrypoint: [ "" ]
+  parallel:
+    matrix:
+      - APP_LAYER: frontend
+      # - APP_LAYER: backend
+  script:
+    - IMG="${CI_REGISTRY_IMAGE}-${APP_LAYER}:latest"
+    - >
+      manifest-tool
+      --username="${CI_REGISTRY_USER}"
+      --password="${CI_REGISTRY_PASSWORD}"
+      push from-args
+      --platforms linux/amd64,linux/arm64
+      --template "${IMG}-ARCH"
+      --target "${IMG}"
+
+
+###########################################
+# DEPLOY
+###########################################
+
+deploy:
+  extends: .deployment-trigger-rules
+  stage: deploy
+  image:
+    name: alpine/helm:3.14.1
+    entrypoint: [ "bash" ]
+  before_script:
+    # Log into docker registry.
+    - echo ${CI_REGISTRY_PASSWORD} | helm registry login -u ${CI_REGISTRY_USER} --password-stdin ${CI_REGISTRY}
+  script:
+    - >
+      helm upgrade
+      ${RELEASE_NAME}
+      ${HELM_CHART}
+      --namespace $K8S_NAMESPACE
+      --kube-context $K8S_CONTEXT
+      --install
+      --atomic
+      -f "helm/values.yaml"
+      --timeout "${HELM_TIMEOUT}"
+      --set frontend.image.repository="${CI_REGISTRY_IMAGE}-frontend"
+      --set frontend.url="${URL_FRONTEND}"
+      --set frontend.port=80
+      # --set backend.image.repository="${CI_REGISTRY_IMAGE}-backend"
+      # --set backend.url="${URL_BACKEND}"
+      # --set backend.port=8080
+  environment:
+    url: https://$URL_FRONTEND
+    name: $CI_PROJECT_NAME/$CI_COMMIT_REF_SLUG
+
+
+############################################
+## VERIFY & DEBUG
+############################################
+
+verify:
+  extends: .deployment-trigger-rules
+  stage: verify
+  image: curlimages/curl:8.6.0
+  before_script:
+    - alias curl='curl -v --fail --connect-timeout 10 --max-time 10 --retry 20 --retry-delay 10 --retry-max-time 120'
+  script:
+    # Verify the frontend.
+    - curl $URL_FRONTEND
+    # # Verify the backend.
+    # - curl $URL_BACKEND
+  retry: 2
