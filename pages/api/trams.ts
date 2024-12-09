@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import fs from "node:fs/promises";
-import { Service, ServiceException, Station, StopStatus, Tram, TramTrip, TripStatus, TripUpdate } from "../../utils/types";
+import { Service, ServiceException, Station, StopStatus, Tram, TramTrip, TripStatus, TripUpdate, Stop } from "../../utils/types";
 import { parseData } from "../../utils/parseUtils"
 import { existsSync } from "node:fs";
 
@@ -169,12 +169,39 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 		t.stops = t.stops.map((s) => {
 			s.pred_arrival = s.arrival + s.arrival_delay * 1000;
 			s.pred_departure = s.departure + s.departure_delay * 1000;
+			if (s.pred_departure <= s.pred_arrival) {
+				s.pred_departure = s.pred_arrival;
+			}
 			return s;
 		});
-		t.stops = t.stops.map((s) => { // quick fix for scuffed data, todo: handle skipped stops
+		return t;
+	});
+
+	let arrivalsMap: Map<Number, {stop: Stop, line: string}[]> = new Map();
+	trams.map((t) => {
+		t.stops.map((s) => {
+			if (arrivalsMap.has(s.stop_diva)) {
+				arrivalsMap.set(s.stop_diva, [{stop: s, line: t.route_name}, ...arrivalsMap.get(s.stop_diva)]);
+			} else {
+				arrivalsMap.set(s.stop_diva, [{stop: s, line: t.route_name}]);
+			}
+		})
+	});
+
+	trams = trams.map((t) => {
+		// make trams wait at first stop, todo: handle delay edge cases
+		let arrivals = arrivalsMap.get(t.stops[0].stop_diva).filter((s) => s.line == t.route_name && s.stop.stop_sequence != t.stops[0].stop_sequence)
+		let prev_arrivals = arrivals.filter((a) => a.stop.pred_arrival < t.stops[0].pred_arrival).sort((a, b) => b.stop.pred_arrival - a.stop.pred_arrival);
+		if (prev_arrivals[0] && t.stops[0].pred_arrival - prev_arrivals[0].stop.pred_arrival <= 3600000) {
+			t.stops[0].pred_arrival = prev_arrivals[0].stop.pred_departure;
+		}
+		// quick fix for scuffed data, todo: handle skipped stops
+		t.stops = t.stops.map((s) => {
 			let ns = t.stops.find((s2) => s2.stop_sequence == s.stop_sequence + 1);
 			if (s.pred_departure <= s.pred_arrival && s.stop_status != StopStatus.Skipped) {
-				s.pred_departure = s.pred_arrival + 5000;
+				if (s.stop_sequence != 0 && s.stop_sequence != t.stops.length) {
+					s.pred_departure = s.pred_arrival + 5000;
+				}
 			}
 			if (ns && s.pred_departure >= ns.pred_arrival && ns.stop_status != StopStatus.Skipped) { // try to interpolate inner stop times from 10% - 90%
 				s.pred_departure = (s.pred_arrival*9 + ns.pred_departure*1) / 10;
@@ -182,6 +209,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 			}
 			return s;
 		});
+		// sequence progress
 		t.stops = t.stops.map((s) => {
 			s.arrived = s.pred_arrival <= time;
 			s.departed = s.pred_departure <= time;
@@ -191,7 +219,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 			}
 			return s;
 		});
-
+		// segment progress
 		let prev_stop = t.stops.find((s) => s.stop_sequence == Math.floor(t.progress));
 		let next_stop = t.stops.find((s) => s.stop_sequence == Math.floor(t.progress + 1));
 		if (prev_stop && next_stop) {

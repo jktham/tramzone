@@ -111,6 +111,22 @@ export type TripUpdate = {
 	}[];
 }
 
+export type Stop = {
+	stop_id: string;
+	stop_diva: number;
+	stop_name: string;
+	stop_sequence: number;
+	stop_status: StopStatus;
+	arrival: number; // timestamp (today)
+	departure: number;
+	arrival_delay: number; // delay in seconds
+	departure_delay: number;
+	pred_arrival: number;
+	pred_departure: number;
+	arrived: boolean;
+	departed: boolean;
+}
+
 export type Tram = {
 	trip_id: string;
 	trip_name: string;
@@ -123,22 +139,8 @@ export type Tram = {
 	service_days: number[];
 	progress: number; // progress as float corresponding to stop sequence
 	delay: number; // current delay to next stop
-	active: boolean; // departed first stop and hasnt arrived at last stop
-	stops: {
-		stop_id: string;
-		stop_diva: number;
-		stop_name: string;
-		stop_sequence: number;
-		stop_status: StopStatus;
-		arrival: number; // timestamp (today)
-		departure: number;
-		arrival_delay: number; // delay in seconds
-		departure_delay: number;
-		pred_arrival: number;
-		pred_departure: number;
-		arrived: boolean;
-		departed: boolean;
-	}[];
+	active: boolean; // arrived at first stop and hasnt departed last stop
+	stops: Stop[];
 }
 
 export type ServiceAlert = {
