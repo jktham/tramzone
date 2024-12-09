@@ -57,6 +57,10 @@ build:kaniko:
         ARCH:
           - amd64
           - arm64
+      - APP_LAYER: backend
+        ARCH:
+          - amd64
+          - arm64
   tags:
     - runner-${ARCH}
   # Sometimes, Azure needs more time to scale the GitLab runner node pool up. Therefore, we set the timeout to 10 minutes.
@@ -93,6 +97,7 @@ build:merge-manifests:
   parallel:
     matrix:
       - APP_LAYER: frontend
+      - APP_LAYER: backend
   script:
     - IMG="${CI_REGISTRY_IMAGE}-${APP_LAYER}:latest"
     - >
@@ -131,7 +136,10 @@ deploy:
       --timeout "${HELM_TIMEOUT}"
       --set frontend.image.repository="${CI_REGISTRY_IMAGE}-frontend"
       --set frontend.url="${URL_FRONTEND}"
-      --set frontend.port=80
+      --set frontend.port=3000
+      --set backend.image.repository="${CI_REGISTRY_IMAGE}-backend"
+      --set backend.url="${URL_BACKEND}"
+      --set backend.port=8080
   environment:
     url: https://$URL_FRONTEND
     name: $CI_PROJECT_NAME/$CI_COMMIT_REF_SLUG
@@ -150,4 +158,6 @@ verify:
   script:
     # Verify the frontend.
     - curl $URL_FRONTEND
+    # Verify the backend.
+    - curl $URL_BACKEND
   retry: 2
