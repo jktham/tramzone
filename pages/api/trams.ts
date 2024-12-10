@@ -193,19 +193,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 		let arrivals = arrivalsMap.get(t.stops[0].stop_diva).filter((s) => s.line == t.route_name && s.stop.stop_sequence != t.stops[0].stop_sequence)
 		let prev_arrivals = arrivals.filter((a) => a.stop.pred_arrival < t.stops[0].pred_arrival).sort((a, b) => b.stop.pred_arrival - a.stop.pred_arrival);
 		if (prev_arrivals[0] && t.stops[0].pred_arrival - prev_arrivals[0].stop.pred_arrival <= 3600000) {
-			t.stops[0].pred_arrival = prev_arrivals[0].stop.pred_departure;
+			t.stops[0].pred_arrival = prev_arrivals[0].stop.pred_departure + 1;
 		}
 		// quick fix for scuffed data, todo: handle skipped stops
 		t.stops = t.stops.map((s) => {
 			let ns = t.stops.find((s2) => s2.stop_sequence == s.stop_sequence + 1);
 			if (s.pred_departure <= s.pred_arrival && s.stop_status != StopStatus.Skipped) {
-				if (s.stop_sequence != 0 && s.stop_sequence != t.stops.length) {
-					s.pred_departure = s.pred_arrival + 5000;
-				}
+				// if (s.stop_sequence != 0 && s.stop_sequence != t.stops.length) {
+				// 	s.pred_departure = s.pred_arrival + 1; // add 1 to indicate modified
+				// }
 			}
 			if (ns && s.pred_departure >= ns.pred_arrival && ns.stop_status != StopStatus.Skipped) { // try to interpolate inner stop times from 10% - 90%
-				s.pred_departure = (s.pred_arrival*9 + ns.pred_departure*1) / 10;
-				ns.pred_arrival = (s.pred_arrival*1 + ns.pred_departure*9) / 10;
+				s.pred_departure = (s.pred_arrival*9 + ns.pred_departure*1) / 10 + 1;
+				ns.pred_arrival = (s.pred_arrival*1 + ns.pred_departure*9) / 10 + 1;
 			}
 			return s;
 		});
