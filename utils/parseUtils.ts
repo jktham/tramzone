@@ -62,209 +62,6 @@ async function parseCSV(path: string) {
 	return raw;
 }
 
-async function getGtfs(date: string) {
-	// get static data
-	if (!(await fs.readdir("data/gtfs/")).includes(`${date}`)) {
-		console.log("getting new gtfs data: ", date);
-		let gtfs_static = await fetch(`https://opentransportdata.swiss/de/dataset/timetable-2024-gtfs2020/resource_permalink/gtfs_fp2024_${date}.zip`);
-		// @ts-ignore: dumb error
-		let str = stream.Readable.fromWeb(gtfs_static.body);
-
-		await fs.writeFile(`data/gtfs/${date}.zip`, str);
-		console.log("unzipping");
-		await createReadStream(`data/gtfs/${date}.zip`).pipe(unzipper.Extract({path: `data/gtfs/${date}`})).promise();
-		await fs.unlink(`data/gtfs/${date}.zip`);
-		console.log("done");
-	} else {
-		console.log("using old gtfs data: ", date);
-	}
-
-	// // get realtime data (test)
-	// console.log("getting gtfs-rt data");
-	// let gtfs_realtime = await fetch("https://api.opentransportdata.swiss/gtfsrt2020?format=JSON", {
-	// 	headers: {
-	// 		Authorization: process.env.KEY_RT,
-	// 		"Accept-Encoding": "gzip, deflate",
-	// 	},
-	// });
-	// await fs.writeFile(`data/gtfs/realtime.json`, await gtfs_realtime.text());
-}
-
-async function parseGtfs(date: string) {
-	// routes
-	console.log("parsing gtfs routes");
-	let routesRaw = await parseCSV(`data/gtfs/${date}/routes.txt`);
-	let routes: Route[] = routesRaw.map((r) => {
-		return {
-			route_id: r[0]?.replace(/['"]+/g, ""),
-			name: r[2]?.replace(/['"]+/g, ""),
-			type: r[5]?.replace(/['"]+/g, ""),
-			agency: r[1]?.replace(/['"]+/g, ""),
-		};
-	});
-	routes = routes.filter((s) => s.type == "900" && s.agency == "3849"); // tram && VBZ
-	await fs.writeFile("data/parsed/routes.json", JSON.stringify(routes));
-
-	// trips
-	console.log("parsing gtfs trips");
-	let tripsRaw = await parseCSV(`data/gtfs/${date}/trips.txt`);
-	let trips: Trip[] = tripsRaw.map((t) => {
-		return {
-			trip_id: t[2]?.replace(/['"]+/g, ""),
-			route_id: t[0]?.replace(/['"]+/g, ""),
-			service_id: t[1]?.replace(/['"]+/g, ""),
-			headsign: t[3]?.replace(/['"]+/g, ""),
-			name: t[4]?.replace(/['"]+/g, ""),
-			direction: Number(t[5]?.replace(/['"]+/g, "")),
-		};
-	});
-	let routeIds = new Set(routes.map((r) => r.route_id));
-	trips = trips.filter((t) => routeIds.has(t.route_id));
-	await fs.writeFile("data/parsed/trips.json", JSON.stringify(trips));
-
-	// stop_times
-	console.log("filtering gtfs stop times");
-
-	let first = true;
-	let tripIds = new Set(trips.map((t) => t.trip_id));
-	let stopTimesFilteredWriteStream = createWriteStream("data/parsed/stopTimesFiltered.csv");
-	await new Promise<void>((resolve) => {
-		let rd = readline.createInterface({
-			input: createReadStream(`data/gtfs/${date}/stop_times.txt`), // big ass file
-			terminal: false,
-		});
-
-		rd.on("line", function (line) {
-			let trip_id = line.split(",")[0].replace(/['"]+/g, "");
-			if (first || tripIds.has(trip_id)) {
-				stopTimesFilteredWriteStream.write(line + "\n");
-			}
-			first = false;
-		});
-
-		rd.on("close", function () {
-			resolve();
-		});
-	});
-
-	console.log("parsing gtfs stop times");
-
-	let stopTimesReadStream = createReadStream("data/parsed/stopTimesFiltered.csv");
-	let stopTimesWriteStream = createWriteStream("data/parsed/stopTimes.json");
-
-	stopTimesWriteStream.on("drain", () => {
-		stopTimesReadStream.resume();
-	});
-	stopTimesWriteStream.write("[");
-
-	let sep = "";
-	await new Promise<void>((resolve) => {
-		stopTimesReadStream
-		.pipe(csv())
-		.on("data", (row) => {
-			let station: StopTime = {
-				trip_id: String(Object.values(row)[0])?.replace(/['"]+/g, ""), // for some reason using the key doesnt work
-				arrival: getTimeFromString(row["arrival_time"]?.replace(/['"]+/g, "")),
-				departure: getTimeFromString(row["departure_time"]?.replace(/['"]+/g, "")),
-				stop_id: row["stop_id"]?.replace(/['"]+/g, ""),
-				stop_sequence: Number(row["stop_sequence"]?.replace(/['"]+/g, "")),
-			};
-			if (!stopTimesWriteStream.write(sep + JSON.stringify(station))) {
-				stopTimesReadStream.pause();
-			}
-			if (sep == "") {
-				sep = ",";
-			}
-		})
-		.on("end", () => {
-			resolve();
-		});
-	});
-	stopTimesWriteStream.write("]");
-
-	// calendar
-	console.log("parsing gtfs services");
-
-	let servicesRaw = await parseCSV(`data/gtfs/${date}/calendar.txt`);
-	if (!servicesRaw[servicesRaw.length-1][0]) {
-		servicesRaw.pop(); // trailing newline sometimes?
-	}
-	let services: Service[] = servicesRaw.map((s) => {
-		return {
-			service_id: s[0]?.replace(/['"]+/g, ""),
-			days: [
-				Number(s[1]?.replace(/['"]+/g, "")),
-				Number(s[2]?.replace(/['"]+/g, "")),
-				Number(s[3]?.replace(/['"]+/g, "")),
-				Number(s[4]?.replace(/['"]+/g, "")),
-				Number(s[5]?.replace(/['"]+/g, "")),
-				Number(s[6]?.replace(/['"]+/g, "")),
-				Number(s[7]?.replace(/['"]+/g, "")),
-			],
-			start: getDateFromString(s[8]?.replace(/['"]+/g, "")),
-			end: getDateFromString(s[9]?.replace(/['"]+/g, "")),
-		};
-	});
-	await fs.writeFile("data/parsed/services.json", JSON.stringify(services));
-
-	// calendar_dates
-	console.log("filtering gtfs service exceptions");
-
-	first = true;
-	let serviceIds = new Set(trips.map((t) => t.service_id));
-	let ServiceExceptionsfilteredWriteStream = createWriteStream("data/parsed/serviceExceptionsFiltered.csv");
-	await new Promise<void>((resolve) => {
-		let rd = readline.createInterface({
-			input: createReadStream(`data/gtfs/${date}/calendar_dates.txt`),
-			terminal: false,
-		});
-
-		rd.on("line", function (line) {
-			let service_id = line.split(",")[0].replace(/['"]+/g, "");
-			if (first || serviceIds.has(service_id)) {
-				ServiceExceptionsfilteredWriteStream.write(line + "\n");
-			}
-			first = false;
-		});
-
-		rd.on("close", function () {
-			resolve();
-		});
-	});
-
-	console.log("parsing gtfs service exceptions")
-	let serviceExceptionsReadStream = createReadStream("data/parsed/serviceExceptionsFiltered.csv");
-	let serviceExceptionsWriteStream = createWriteStream("data/parsed/serviceExceptions.json");
-
-	serviceExceptionsWriteStream.on("drain", () => {
-		serviceExceptionsReadStream.resume();
-	});
-	serviceExceptionsWriteStream.write("[");
-
-	sep = "";
-	await new Promise<void>((resolve) => {
-		serviceExceptionsReadStream
-		.pipe(csv())
-		.on("data", (row) => {
-			let serviceException: ServiceException = {
-				service_id: String(Object.values(row)[0])?.replace(/['"]+/g, ""),
-				date: getDateFromString(row["date"]?.replace(/['"]+/g, "")),
-				type: Number(row["exception_type"]?.replace(/['"]+/g, "")),
-			};
-			if (!serviceExceptionsWriteStream.write(sep + JSON.stringify(serviceException))) {
-				serviceExceptionsReadStream.pause();
-			}
-			if (sep == "") {
-				sep = ",";
-			}
-		})
-		.on("end", () => {
-			resolve();
-		});
-	});
-	serviceExceptionsWriteStream.write("]");
-}
-
 async function parseStations() {
 	console.log("parsing dataset stations");
 
@@ -285,6 +82,7 @@ async function parseStations() {
 	stations = stations.filter((s) => !ignoredStations.includes(s.id));
 
 	await fs.writeFile("data/parsed/stations.json", JSON.stringify(stations));
+	console.log(process.memoryUsage().heapUsed / 1024 / 1024)
 }
 
 async function parseLines() {
@@ -339,6 +137,253 @@ async function parseLines() {
 	lines.push(extraLine);
 	
 	await fs.writeFile("data/parsed/lines.json", JSON.stringify(lines));
+	console.log(process.memoryUsage().heapUsed / 1024 / 1024)
+}
+
+async function getGtfs(date: string) {
+	// get static data
+	if (!(await fs.readdir("data/gtfs/")).includes(`${date}`)) {
+		console.log("getting new gtfs data: ", date);
+		let gtfs_static = await fetch(`https://opentransportdata.swiss/de/dataset/timetable-2024-gtfs2020/resource_permalink/gtfs_fp2024_${date}.zip`);
+		// @ts-ignore: dumb error
+		let str = stream.Readable.fromWeb(gtfs_static.body);
+
+		await fs.writeFile(`data/gtfs/${date}.zip`, str);
+		console.log("unzipping");
+		await createReadStream(`data/gtfs/${date}.zip`).pipe(unzipper.Extract({path: `data/gtfs/${date}`})).promise();
+		await fs.unlink(`data/gtfs/${date}.zip`);
+		console.log("done");
+	} else {
+		console.log("using old gtfs data: ", date);
+	}
+
+	// // get realtime data (test)
+	// console.log("getting gtfs-rt data");
+	// let gtfs_realtime = await fetch("https://api.opentransportdata.swiss/gtfsrt2020?format=JSON", {
+	// 	headers: {
+	// 		Authorization: process.env.KEY_RT,
+	// 		"Accept-Encoding": "gzip, deflate",
+	// 	},
+	// });
+	// await fs.writeFile(`data/gtfs/realtime.json`, await gtfs_realtime.text());
+}
+
+async function parseRoutes(date: string) {
+	console.log("parsing gtfs routes");
+	let routesRaw = await parseCSV(`data/gtfs/${date}/routes.txt`);
+	let routes: Route[] = routesRaw.map((r) => {
+		return {
+			route_id: r[0]?.replace(/['"]+/g, ""),
+			name: r[2]?.replace(/['"]+/g, ""),
+			type: r[5]?.replace(/['"]+/g, ""),
+			agency: r[1]?.replace(/['"]+/g, ""),
+		};
+	});
+	routes = routes.filter((s) => s.type == "900" && s.agency == "3849"); // tram && VBZ
+	await fs.writeFile("data/parsed/routes.json", JSON.stringify(routes));
+	console.log(process.memoryUsage().heapUsed / 1024 / 1024);
+}
+
+async function filterTrips(date: string) {
+	console.log("filtering gtfs trips");
+
+	let first = true;
+	let routes: Route[] = JSON.parse((await fs.readFile("data/parsed/routes.json")).toString());
+	let routeIds = new Set(routes.map((r) => r.route_id));
+	let writeStream = createWriteStream("data/parsed/tripsFiltered.csv");
+	await new Promise<void>((resolve) => {
+		let rd = readline.createInterface({
+			input: createReadStream(`data/gtfs/${date}/trips.txt`),
+			terminal: false,
+		});
+
+		rd.on("line", function (line) {
+			let route_id = line.split(",")[0].replace(/['"]+/g, "");
+			if (first || routeIds.has(route_id)) {
+				writeStream.write(line + "\r\n"); // ew
+			}
+			first = false;
+		});
+
+		rd.on("close", function () {
+			resolve();
+		});
+	});
+	console.log(process.memoryUsage().heapUsed / 1024 / 1024)
+}
+
+async function parseTrips(date: string) {
+	console.log("parsing gtfs trips");
+	let tripsRaw = await parseCSV("data/parsed/tripsFiltered.csv");
+	tripsRaw.pop(); // weird empty last line
+	let trips: Trip[] = tripsRaw.map((t) => {
+		return {
+			trip_id: t[2]?.replace(/['"]+/g, ""),
+			route_id: t[0]?.replace(/['"]+/g, ""),
+			service_id: t[1]?.replace(/['"]+/g, ""),
+			headsign: t[3]?.replace(/['"]+/g, ""),
+			name: t[4]?.replace(/['"]+/g, ""),
+			direction: Number(t[5]?.replace(/['"]+/g, "")),
+		};
+	});
+	await fs.writeFile("data/parsed/trips.json", JSON.stringify(trips));
+	console.log(process.memoryUsage().heapUsed / 1024 / 1024)
+}
+
+async function filterStopTimes(date: string) {
+	console.log("filtering gtfs stop times");
+
+	let first = true;
+	let trips: Trip[] = JSON.parse((await fs.readFile("data/parsed/trips.json")).toString());
+	let tripIds = new Set(trips.map((t) => t.trip_id));
+	let writeStream = createWriteStream("data/parsed/stopTimesFiltered.csv");
+	await new Promise<void>((resolve) => {
+		let rd = readline.createInterface({
+			input: createReadStream(`data/gtfs/${date}/stop_times.txt`), // big ass file
+			terminal: false,
+		});
+
+		rd.on("line", function (line) {
+			let trip_id = line.split(",")[0].replace(/['"]+/g, "");
+			if (first || tripIds.has(trip_id)) {
+				writeStream.write(line + "\r\n");
+			}
+			first = false;
+		});
+
+		rd.on("close", function () {
+			resolve();
+		});
+	});
+	console.log(process.memoryUsage().heapUsed / 1024 / 1024)
+}
+
+async function parseStopTimes(date: string) {
+	console.log("parsing gtfs stop times");
+
+	let readStream = createReadStream("data/parsed/stopTimesFiltered.csv");
+	let writeStream = createWriteStream("data/parsed/stopTimes.json");
+
+	writeStream.on("drain", () => {
+		readStream.resume();
+	});
+	writeStream.write("[");
+
+	let sep = "";
+	await new Promise<void>((resolve) => {
+		readStream
+		.pipe(csv())
+		.on("data", (row) => {
+			let station: StopTime = {
+				trip_id: String(Object.values(row)[0])?.replace(/['"]+/g, ""), // for some reason using the key doesnt work
+				arrival: getTimeFromString(row["arrival_time"]?.replace(/['"]+/g, "")),
+				departure: getTimeFromString(row["departure_time"]?.replace(/['"]+/g, "")),
+				stop_id: row["stop_id"]?.replace(/['"]+/g, ""),
+				stop_sequence: Number(row["stop_sequence"]?.replace(/['"]+/g, "")),
+			};
+			if (!writeStream.write(sep + JSON.stringify(station))) {
+				readStream.pause();
+			}
+			if (sep == "") {
+				sep = ",";
+			}
+		})
+		.on("end", () => {
+			resolve();
+		});
+	});
+	writeStream.write("]");
+	console.log(process.memoryUsage().heapUsed / 1024 / 1024)
+}
+
+async function parseServices(date: string) {
+	console.log("parsing gtfs services");
+
+	let servicesRaw = await parseCSV(`data/gtfs/${date}/calendar.txt`);
+	if (!servicesRaw[servicesRaw.length-1][0]) {
+		servicesRaw.pop(); // trailing newline sometimes?
+	}
+	let services: Service[] = servicesRaw.map((s) => {
+		return {
+			service_id: s[0]?.replace(/['"]+/g, ""),
+			days: [
+				Number(s[1]?.replace(/['"]+/g, "")),
+				Number(s[2]?.replace(/['"]+/g, "")),
+				Number(s[3]?.replace(/['"]+/g, "")),
+				Number(s[4]?.replace(/['"]+/g, "")),
+				Number(s[5]?.replace(/['"]+/g, "")),
+				Number(s[6]?.replace(/['"]+/g, "")),
+				Number(s[7]?.replace(/['"]+/g, "")),
+			],
+			start: getDateFromString(s[8]?.replace(/['"]+/g, "")),
+			end: getDateFromString(s[9]?.replace(/['"]+/g, "")),
+		};
+	});
+	await fs.writeFile("data/parsed/services.json", JSON.stringify(services));
+	console.log(process.memoryUsage().heapUsed / 1024 / 1024)
+}
+
+async function filterServiceExceptions(date: string) {
+	console.log("filtering gtfs service exceptions");
+
+	let first = true;
+	let trips: Trip[] = JSON.parse((await fs.readFile("data/parsed/trips.json")).toString());
+	let serviceIds = new Set(trips.map((t) => t.service_id));
+	let writeStream = createWriteStream("data/parsed/serviceExceptionsFiltered.csv");
+	await new Promise<void>((resolve) => {
+		let rd = readline.createInterface({
+			input: createReadStream(`data/gtfs/${date}/calendar_dates.txt`),
+			terminal: false,
+		});
+
+		rd.on("line", function (line) {
+			let service_id = line.split(",")[0].replace(/['"]+/g, "");
+			if (first || serviceIds.has(service_id)) {
+				writeStream.write(line + "\r\n");
+			}
+			first = false;
+		});
+
+		rd.on("close", function () {
+			resolve();
+		});
+	});
+	console.log(process.memoryUsage().heapUsed / 1024 / 1024)
+}
+
+async function parseServiceExceptions(date: string) {
+	console.log("parsing gtfs service exceptions")
+	let readStream = createReadStream("data/parsed/serviceExceptionsFiltered.csv");
+	let writeStream = createWriteStream("data/parsed/serviceExceptions.json");
+
+	writeStream.on("drain", () => {
+		readStream.resume();
+	});
+	writeStream.write("[");
+
+	let sep = "";
+	await new Promise<void>((resolve) => {
+		readStream
+		.pipe(csv())
+		.on("data", (row) => {
+			let serviceException: ServiceException = {
+				service_id: String(Object.values(row)[0])?.replace(/['"]+/g, ""),
+				date: getDateFromString(row["date"]?.replace(/['"]+/g, "")),
+				type: Number(row["exception_type"]?.replace(/['"]+/g, "")),
+			};
+			if (!writeStream.write(sep + JSON.stringify(serviceException))) {
+				readStream.pause();
+			}
+			if (sep == "") {
+				sep = ",";
+			}
+		})
+		.on("end", () => {
+			resolve();
+		});
+	});
+	writeStream.write("]");
+	console.log(process.memoryUsage().heapUsed / 1024 / 1024)
 }
 
 async function generateTramTrips() {
@@ -406,9 +451,10 @@ async function generateTramTrips() {
 		});
 		await fs.writeFile(`data/parsed/tramTrips${i}.json`, JSON.stringify(tramTripsDaily));
 	}
+	console.log(process.memoryUsage().heapUsed / 1024 / 1024)
 }
 
-const version = 1;
+const version = 2;
 let lock = new AsyncLock();
 export async function parseData(force: boolean) {
 	// console.log("acquiring parse lock")
@@ -428,7 +474,14 @@ export async function parseData(force: boolean) {
 			await parseLines();
 			await parseStations();
 			await getGtfs(date);
-			await parseGtfs(date);
+			await parseRoutes(date);
+			await filterTrips(date);
+			await parseTrips(date);
+			await filterStopTimes(date);
+			await parseStopTimes(date);
+			await parseServices(date);
+			await filterServiceExceptions(date);
+			await parseServiceExceptions(date);
 			await generateTramTrips();
 		
 			await fs.writeFile(`data/parsed/lastUpdate.json`, JSON.stringify({date: getUpdateDate(), version: version}));
