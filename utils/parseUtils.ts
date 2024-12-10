@@ -36,7 +36,7 @@ function getTimeFromString(timeString: string) {
 	let s = Number(timeString.split(":")[2]);
 
 	let date = new Date(0);
-	date.setHours(h, m, s, 0);
+	date.setUTCHours(h, m, s, 0); // no idea what timezone this should be
 	return date.getTime();
 }
 
