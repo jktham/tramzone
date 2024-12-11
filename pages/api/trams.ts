@@ -38,8 +38,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 	time += query.timeOffset;
 
 	let today = new Date(time);
-	today.setHours(0, 0, 0, 0);
-	let weekday = (today.getDay() + 6) % 7; // mon=0
+	today.setUTCHours(-1, 0, 0, 0); // midnight CET
+	let weekday = (today.getUTCDay() + 1 + 6) % 7; // mon=0
 
 	let tramTrips: TramTrip[] = JSON.parse(await fs.readFile(`data/parsed/tramTrips${weekday}.json`, "utf-8"));
 	let services: Service[] = JSON.parse(await fs.readFile(`data/parsed/services.json`, "utf-8"));
