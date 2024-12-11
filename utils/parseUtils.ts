@@ -7,6 +7,8 @@ import readline from "node:readline";
 import { convertLV95toWGS84 } from "./mapUtils";
 import { Route, Trip, StopTime, Service, ServiceException, Station, Line, Segment, TramTrip } from "./types";
 let AsyncLock = require("async-lock");
+import { parser } from 'stream-json';
+import { streamArray } from 'stream-json/streamers/StreamArray';
 
 function getUpdateDate() {
 	// new gtfs data every monday and thursday (static at 10:00, rt at 15:00)
@@ -284,9 +286,7 @@ async function parseStopTimes(date: string) {
 			if (!writeStream.write(sep + JSON.stringify(station))) {
 				readStream.pause();
 			}
-			if (sep == "") {
-				sep = ",";
-			}
+			sep = ",";
 		})
 		.on("end", () => {
 			resolve();
@@ -374,9 +374,7 @@ async function parseServiceExceptions(date: string) {
 			if (!writeStream.write(sep + JSON.stringify(serviceException))) {
 				readStream.pause();
 			}
-			if (sep == "") {
-				sep = ",";
-			}
+			sep = ",";
 		})
 		.on("end", () => {
 			resolve();
@@ -386,75 +384,147 @@ async function parseServiceExceptions(date: string) {
 	console.log(process.memoryUsage().heapUsed / 1024 / 1024)
 }
 
-async function generateTramTrips() {
-	console.log("generating tramTrips");
+async function splitStopTimes() {
+	console.log("splitting stop times");
 
+	console.log(process.memoryUsage().heapUsed / 1024 / 1024)
+	let trips: Trip[] = JSON.parse((await fs.readFile("data/parsed/trips.json")).toString());
+	let services: Service[] = JSON.parse((await fs.readFile("data/parsed/services.json")).toString());
+	console.log(process.memoryUsage().heapUsed / 1024 / 1024)
+
+	let tripsToServices: Map<string, string> = new Map();
+	trips.map((t) => {
+		tripsToServices.set(t.trip_id, t.service_id);
+	});
+	let serviceDaysMap: Map<string, number[]> = new Map();
+	services.map((s) => {
+		serviceDaysMap.set(s.service_id, s.days);
+	});
+	console.log(process.memoryUsage().heapUsed / 1024 / 1024)
+
+	let seps = [];
+	let splitWriteStreams = [];
+	for (let i=0; i<7; i++) {
+		seps.push("");
+		splitWriteStreams.push(createWriteStream(`data/parsed/stopTimes${i}.json`));
+		splitWriteStreams[i].write("[");
+	}
+
+	let readStream = createReadStream("data/parsed/stopTimes.json");
+	await new Promise<void>((resolve) => {
+		readStream
+		.pipe(parser())
+		.pipe(streamArray())
+		.on("data", (data) => {
+			let stopTime: StopTime = data.value;
+			for (let i = 0; i < 7; i++) {
+				let serviceDays = serviceDaysMap.get(tripsToServices.get(stopTime.trip_id));
+				let offset = 0;
+				let keepNext = false;
+				let keepPrev = false;
+				if (stopTime.arrival >= 86400000 || stopTime.departure >= 86400000) { // >24h gtfs times
+					offset = 6;
+				}
+				if (stopTime.arrival < 86400000 && stopTime.arrival >= 86400000 - 3600000 || stopTime.departure < 86400000 && stopTime.departure >= 86400000 - 3600000) { // close to next day
+					keepNext = true;
+				}
+				if (stopTime.arrival <= 3600000 || stopTime.departure <= 3600000) { // close to prev day
+					keepPrev = true;
+				}
+				if (serviceDays[i] == 1 || serviceDays[(i + offset) % 7] == 1) { // also keep in previous day (if service active)
+					splitWriteStreams[i].write(seps[i] + JSON.stringify(stopTime));
+					seps[i] = ",";
+				}
+				if (serviceDays[i] == 1 && keepPrev) { // force keep for trip overlap
+					splitWriteStreams[(i+6)%7].write(seps[(i+6)%7] + JSON.stringify(stopTime));
+					seps[(i+6)%7] = ",";
+				}
+				if (serviceDays[i] == 1 && keepNext) {
+					splitWriteStreams[(i+1)%7].write(seps[(i+1)%7] + JSON.stringify(stopTime));
+					seps[(i+1)%7] = ",";
+				}
+			}
+		})
+		.on("end", () => {
+			resolve();
+		});
+	});
+
+	for (let i=0; i<7; i++) {
+		splitWriteStreams[i].write("]");
+	}
+
+	console.log(process.memoryUsage().heapUsed / 1024 / 1024)
+}
+
+async function generateTramTrips() {
+	console.log("generating tram trips");
+
+	console.log(process.memoryUsage().heapUsed / 1024 / 1024)
 	let routes: Route[] = JSON.parse((await fs.readFile("data/parsed/routes.json")).toString());
 	let trips: Trip[] = JSON.parse((await fs.readFile("data/parsed/trips.json")).toString());
-	let stopTimes: StopTime[] = JSON.parse((await fs.readFile("data/parsed/stopTimes.json")).toString());
 	let services: Service[] = JSON.parse((await fs.readFile("data/parsed/services.json")).toString());
-
-	let stopTimesMap: Map<string, StopTime[]> = new Map();
-	stopTimes.map((s) => {
-		if (stopTimesMap.has(s.trip_id)) {
-			stopTimesMap.set(s.trip_id, [s, ...stopTimesMap.get(s.trip_id)]);
-		} else {
-			stopTimesMap.set(s.trip_id, [s]);
-		}
-	});
-	stopTimesMap.forEach((v, k) => {
-		stopTimesMap.set(k, v.sort((a, b) => a.stop_sequence - b.stop_sequence));
-	});
+	console.log(process.memoryUsage().heapUsed / 1024 / 1024)
 
 	let servicesMap: Map<string, number[]> = new Map();
 	services.map((s) => {
 		servicesMap.set(s.service_id, s.days);
 	});
 
-	// todo: aaaa
-	let tramTrips: TramTrip[] = trips.map((t) => {
-		let r: Route = routes.find((r) => r.route_id == t.route_id);
-		let s: StopTime[] = stopTimesMap.get(t.trip_id);
-		return {
-			trip_id: t.trip_id,
-			trip_name: t.name,
-			headsign: t.headsign,
-			direction: t.direction,
-			route_id: r.route_id,
-			route_name: r.name,
-			service_id: t.service_id,
-			service_days: servicesMap.get(t.service_id),
-			stops: s.map((s) => {
-				return {
-					stop_id: s.stop_id,
-					stop_sequence: s.stop_sequence,
-					arrival: s.arrival,
-					departure: s.departure,
-				};
-			}),
-		};
-	})
-	.sort((a, b) => a.direction - b.direction)
-	.sort((a, b) => a.trip_id.localeCompare(b.trip_id))
-
-	await fs.writeFile("data/parsed/tramTrips.json", JSON.stringify(tramTrips));
-
 	for (let i = 0; i < 7; i++) {
-		let tramTripsDaily = tramTrips.filter((t) => {
-			let offset = 0
-			for (let s of t.stops) {
-				if (s.arrival >= 86400000 || s.departure >= 86400000) { // >24h gtfs times
-					offset = 6;
-				}
+		let stopTimes: StopTime[] = JSON.parse((await fs.readFile(`data/parsed/stopTimes${i}.json`)).toString());
+		console.log(process.memoryUsage().heapUsed / 1024 / 1024)
+
+		let stopTimesMap: Map<string, StopTime[]> = new Map();
+		stopTimes.map((s) => {
+			if (stopTimesMap.has(s.trip_id)) {
+				stopTimesMap.set(s.trip_id, [s, ...stopTimesMap.get(s.trip_id)]);
+			} else {
+				stopTimesMap.set(s.trip_id, [s]);
 			}
-			return t.service_days[i] == 1 || t.service_days[(i + offset) % 7] == 1 // also keep in previous day for trip overlap
 		});
-		await fs.writeFile(`data/parsed/tramTrips${i}.json`, JSON.stringify(tramTripsDaily));
+		stopTimesMap.forEach((v, k) => {
+			stopTimesMap.set(k, v.sort((a, b) => a.stop_sequence - b.stop_sequence));
+		});
+		console.log(process.memoryUsage().heapUsed / 1024 / 1024)
+
+		// todo: aaaa
+		let tramTrips: TramTrip[] = trips.map((t) => {
+			let r: Route = routes.find((r) => r.route_id == t.route_id);
+			let s: StopTime[] = stopTimesMap.get(t.trip_id);
+			if (!s) { // not in service day i
+				return null;
+			}
+			return {
+				trip_id: t.trip_id,
+				trip_name: t.name,
+				headsign: t.headsign,
+				direction: t.direction,
+				route_id: r.route_id,
+				route_name: r.name,
+				service_id: t.service_id,
+				service_days: servicesMap.get(t.service_id),
+				stops: s.map((s) => {
+					return {
+						stop_id: s.stop_id,
+						stop_sequence: s.stop_sequence,
+						arrival: s.arrival,
+						departure: s.departure,
+					};
+				}),
+			};
+		})
+		.filter((t) => t != null)
+		.sort((a, b) => a.direction - b.direction)
+		.sort((a, b) => a.trip_id.localeCompare(b.trip_id))
+
+		await fs.writeFile(`data/parsed/tramTrips${i}.json`, JSON.stringify(tramTrips));
+		console.log(process.memoryUsage().heapUsed / 1024 / 1024)
 	}
 	console.log(process.memoryUsage().heapUsed / 1024 / 1024)
 }
 
-const version = 2;
+const version = 3;
 let lock = new AsyncLock();
 export async function parseData(force: boolean) {
 	// console.log("acquiring parse lock")
@@ -482,6 +552,7 @@ export async function parseData(force: boolean) {
 			await parseServices(date);
 			await filterServiceExceptions(date);
 			await parseServiceExceptions(date);
+			await splitStopTimes();
 			await generateTramTrips();
 		
 			await fs.writeFile(`data/parsed/lastUpdate.json`, JSON.stringify({date: getUpdateDate(), version: version}));

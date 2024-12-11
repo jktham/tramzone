@@ -96,7 +96,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 			realtime = {"Entity": []};
 		}
 	} else { // todo: performance
-		fs.writeFile("data/gtfs/realtime.json", JSON.stringify(realtime));
+		let tripIds: Set<string> = new Set(tramTrips.map((t) => t.trip_id));
+		let rt = {"Entity": realtime["Entity"].filter((e) => tripIds.has(e["Id"]))};
+		fs.writeFile("data/gtfs/realtime.json", JSON.stringify(rt));
 	}
 
 	let tripIds: Set<string> = new Set(tramTrips.map((t) => t.trip_id));
