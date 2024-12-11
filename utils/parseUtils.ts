@@ -48,8 +48,8 @@ function getDateFromString(dateString: string) {
 	let d = Number(dateString.slice(6, 8));
 
 	let date = new Date(0);
-	date.setFullYear(y, m-1, d);
-	date.setHours(0, 0, 0, 0);
+	date.setUTCFullYear(y, m-1, d); // todo: check this is actually correct
+	date.setUTCHours(-1, 0, 0, 0); // midnight CET
 	return date.getTime();
 }
 
