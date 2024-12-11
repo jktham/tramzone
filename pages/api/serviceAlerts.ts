@@ -18,7 +18,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 	let serviceAlerts = await gtfs_serviceAlerts;
 
 	if (!serviceAlerts || serviceAlerts.error) {
-		console.log(serviceAlerts)
+		console.log("sa failed: ", serviceAlerts)
 		if (existsSync("data/gtfs/serviceAlerts.json")) {
 			serviceAlerts = JSON.parse(await fs.readFile("data/gtfs/serviceAlerts.json", "utf-8"));
 		} else {

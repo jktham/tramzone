@@ -67,4 +67,4 @@ CMD ["node", "--max-old-space-size=500", "--expose-gc", "server.js"]
 
 # i just added these
 COPY --from=builder --chown=nextjs:nodejs /app/data ./data
-RUN ls
+RUN ls -a

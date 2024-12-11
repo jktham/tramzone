@@ -89,7 +89,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 	
 	// recover from rate limit
 	if (!realtime || realtime.error) {
-		console.log(realtime)
+		console.log("rt failed: ", realtime)
 		if (existsSync("data/gtfs/realtime.json")) {
 			realtime = JSON.parse(await fs.readFile("data/gtfs/realtime.json", "utf-8"));
 		} else {
