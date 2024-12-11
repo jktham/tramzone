@@ -137,6 +137,9 @@ deploy:
       --set frontend.image.repository="${CI_REGISTRY_IMAGE}-frontend"
       --set frontend.url="${URL_FRONTEND}"
       --set frontend.port=3000
+      --set frontend.extraEnv.KEY_RT="${KEY_RT}"
+      --set frontend.extraEnv.KEY_SA="${KEY_SA}"
+      --set frontend.extraEnv.KEY_RT_PUBLIC="${KEY_RT_PUBLIC}"
       --set backend.image.repository="${CI_REGISTRY_IMAGE}-backend"
       --set backend.url="${URL_BACKEND}"
       --set backend.port=8080

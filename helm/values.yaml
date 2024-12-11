@@ -12,9 +12,7 @@ frontend:
   health: "/"
 
   # Define extra environment variables for your application
-  extraEnv: |
-  #  - name: DEBUG
-  #    value: true
+  extraEnv: {}
 
   url: null
 
