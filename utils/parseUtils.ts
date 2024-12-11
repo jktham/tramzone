@@ -80,7 +80,7 @@ async function parseStations() {
 	});
 	stations = stations.filter((s) => s.type && s.type.toLowerCase().includes("tram"));
 
-	let ignoredStations = JSON.parse((await fs.readFile(`data/datasets/ignoredStations.json`)).toString());
+	let ignoredStations = JSON.parse(await fs.readFile(`data/datasets/ignoredStations.json`, "utf-8"));
 	stations = stations.filter((s) => !ignoredStations.includes(s.id));
 
 	await fs.writeFile("data/parsed/stations.json", JSON.stringify(stations));
@@ -190,7 +190,7 @@ async function filterTrips(date: string) {
 	console.log("filtering gtfs trips");
 
 	let first = true;
-	let routes: Route[] = JSON.parse((await fs.readFile("data/parsed/routes.json")).toString());
+	let routes: Route[] = JSON.parse(await fs.readFile("data/parsed/routes.json", "utf-8"));
 	let routeIds = new Set(routes.map((r) => r.route_id));
 	let writeStream = createWriteStream("data/parsed/tripsFiltered.csv");
 	await new Promise<void>((resolve) => {
@@ -236,7 +236,7 @@ async function filterStopTimes(date: string) {
 	console.log("filtering gtfs stop times");
 
 	let first = true;
-	let trips: Trip[] = JSON.parse((await fs.readFile("data/parsed/trips.json")).toString());
+	let trips: Trip[] = JSON.parse(await fs.readFile("data/parsed/trips.json", "utf-8"));
 	let tripIds = new Set(trips.map((t) => t.trip_id));
 	let writeStream = createWriteStream("data/parsed/stopTimesFiltered.csv");
 	await new Promise<void>((resolve) => {
@@ -327,7 +327,7 @@ async function filterServiceExceptions(date: string) {
 	console.log("filtering gtfs service exceptions");
 
 	let first = true;
-	let trips: Trip[] = JSON.parse((await fs.readFile("data/parsed/trips.json")).toString());
+	let trips: Trip[] = JSON.parse(await fs.readFile("data/parsed/trips.json", "utf-8"));
 	let serviceIds = new Set(trips.map((t) => t.service_id));
 	let writeStream = createWriteStream("data/parsed/serviceExceptionsFiltered.csv");
 	await new Promise<void>((resolve) => {
@@ -388,8 +388,8 @@ async function splitStopTimes() {
 	console.log("splitting stop times");
 
 	console.log(process.memoryUsage().heapUsed / 1024 / 1024)
-	let trips: Trip[] = JSON.parse((await fs.readFile("data/parsed/trips.json")).toString());
-	let services: Service[] = JSON.parse((await fs.readFile("data/parsed/services.json")).toString());
+	let trips: Trip[] = JSON.parse(await fs.readFile("data/parsed/trips.json", "utf-8"));
+	let services: Service[] = JSON.parse(await fs.readFile("data/parsed/services.json", "utf-8"));
 	console.log(process.memoryUsage().heapUsed / 1024 / 1024)
 
 	let tripsToServices: Map<string, string> = new Map();
@@ -457,22 +457,13 @@ async function splitStopTimes() {
 	console.log(process.memoryUsage().heapUsed / 1024 / 1024)
 }
 
-async function generateTramTrips() {
-	console.log("generating tram trips");
-
-	console.log(process.memoryUsage().heapUsed / 1024 / 1024)
-	let routes: Route[] = JSON.parse((await fs.readFile("data/parsed/routes.json")).toString());
-	let trips: Trip[] = JSON.parse((await fs.readFile("data/parsed/trips.json")).toString());
-	let services: Service[] = JSON.parse((await fs.readFile("data/parsed/services.json")).toString());
-	console.log(process.memoryUsage().heapUsed / 1024 / 1024)
-
-	let servicesMap: Map<string, number[]> = new Map();
-	services.map((s) => {
-		servicesMap.set(s.service_id, s.days);
-	});
-
+async function mapStopTimes() {
+	console.log("mapping stop times");
+	
 	for (let i = 0; i < 7; i++) {
-		let stopTimes: StopTime[] = JSON.parse((await fs.readFile(`data/parsed/stopTimes${i}.json`)).toString());
+		if (global.gc) global.gc();
+
+		let stopTimes: StopTime[] = JSON.parse(await fs.readFile(`data/parsed/stopTimes${i}.json`, "utf-8"));
 		console.log(process.memoryUsage().heapUsed / 1024 / 1024)
 
 		let stopTimesMap: Map<string, StopTime[]> = new Map();
@@ -486,7 +477,33 @@ async function generateTramTrips() {
 		stopTimesMap.forEach((v, k) => {
 			stopTimesMap.set(k, v.sort((a, b) => a.stop_sequence - b.stop_sequence));
 		});
+
+		await fs.writeFile(`data/parsed/stopTimesMap${i}.json`, JSON.stringify(Array.from(stopTimesMap.entries())));
 		console.log(process.memoryUsage().heapUsed / 1024 / 1024)
+	}
+}
+
+async function generateTramTrips() {
+	console.log("generating tram trips");
+	if (global.gc) global.gc();
+
+	console.log(process.memoryUsage().heapUsed / 1024 / 1024)
+	let routes: Route[] = JSON.parse(await fs.readFile("data/parsed/routes.json", "utf-8"));
+	let trips: Trip[] = JSON.parse(await fs.readFile("data/parsed/trips.json", "utf-8"));
+	let services: Service[] = JSON.parse(await fs.readFile("data/parsed/services.json", "utf-8"));
+	console.log(process.memoryUsage().heapUsed / 1024 / 1024)
+
+	let servicesMap: Map<string, number[]> = new Map();
+	services.map((s) => {
+		servicesMap.set(s.service_id, s.days);
+	});
+
+	for (let i = 0; i < 7; i++) {
+		if (global.gc) global.gc();
+
+		console.log(process.memoryUsage().heapUsed / 1024 / 1024)
+
+		let stopTimesMap: Map<string, StopTime[]> = new Map(JSON.parse(await fs.readFile(`data/parsed/stopTimesMap${i}.json`, "utf-8")));
 
 		// todo: aaaa
 		let tramTrips: TramTrip[] = trips.map((t) => {
@@ -529,7 +546,7 @@ let lock = new AsyncLock();
 export async function parseData(force: boolean) {
 	// console.log("acquiring parse lock")
 	await lock.acquire("parseKey", async () => { // prevent interleaved parsing caused by simultaneous api calls
-		if (force || !existsSync("data/parsed/lastUpdate.json") || (await fs.readFile("data/parsed/lastUpdate.json")).toString() != JSON.stringify({date: getUpdateDate(), version: version})) {
+		if (force || !existsSync("data/parsed/lastUpdate.json") || (await fs.readFile("data/parsed/lastUpdate.json", "utf-8")) != JSON.stringify({date: getUpdateDate(), version: version})) {
 			console.log("parsing data");
 	
 			if (!existsSync("data/gtfs/")) {
@@ -553,6 +570,7 @@ export async function parseData(force: boolean) {
 			await filterServiceExceptions(date);
 			await parseServiceExceptions(date);
 			await splitStopTimes();
+			await mapStopTimes();
 			await generateTramTrips();
 		
 			await fs.writeFile(`data/parsed/lastUpdate.json`, JSON.stringify({date: getUpdateDate(), version: version}));

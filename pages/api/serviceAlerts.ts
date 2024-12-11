@@ -20,7 +20,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 	if (!serviceAlerts || serviceAlerts.error) {
 		console.log(serviceAlerts)
 		if (existsSync("data/gtfs/serviceAlerts.json")) {
-			serviceAlerts = JSON.parse((await fs.readFile("data/gtfs/serviceAlerts.json")).toString());
+			serviceAlerts = JSON.parse(await fs.readFile("data/gtfs/serviceAlerts.json", "utf-8"));
 		} else {
 			serviceAlerts = {"entity": []};
 		}

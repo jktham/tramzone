@@ -7,6 +7,6 @@ type ResponseData = Station[] | string
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<ResponseData>) {
 	await parseData(false)
-	let stations: Station[] = JSON.parse((await fs.readFile("data/parsed/stations.json")).toString())
+	let stations: Station[] = JSON.parse(await fs.readFile("data/parsed/stations.json", "utf-8"))
 	res.status(200).json(stations)
 }

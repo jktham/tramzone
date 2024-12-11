@@ -7,6 +7,6 @@ type ResponseData = Line[] | string
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<ResponseData>) {
 	await parseData(false)
-	let lines: Line[] = JSON.parse((await fs.readFile("data/parsed/lines.json")).toString())
+	let lines: Line[] = JSON.parse(await fs.readFile("data/parsed/lines.json", "utf-8"))
 	res.status(200).json(lines)
 }

@@ -41,9 +41,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 	today.setHours(0, 0, 0, 0);
 	let weekday = (today.getDay() + 6) % 7; // mon=0
 
-	let tramTrips: TramTrip[] = JSON.parse((await fs.readFile(`data/parsed/tramTrips${weekday}.json`)).toString());
-	let services: Service[] = JSON.parse((await fs.readFile(`data/parsed/services.json`)).toString());
-	let serviceExceptions: ServiceException[] = JSON.parse((await fs.readFile(`data/parsed/serviceExceptions.json`)).toString());
+	let tramTrips: TramTrip[] = JSON.parse(await fs.readFile(`data/parsed/tramTrips${weekday}.json`, "utf-8"));
+	let services: Service[] = JSON.parse(await fs.readFile(`data/parsed/services.json`, "utf-8"));
+	let serviceExceptions: ServiceException[] = JSON.parse(await fs.readFile(`data/parsed/serviceExceptions.json`, "utf-8"));
 
 	let servicesMap: Map<string, Service> = new Map();
 	services.map((s) => {
@@ -91,7 +91,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 	if (!realtime || realtime.error) {
 		console.log(realtime)
 		if (existsSync("data/gtfs/realtime.json")) {
-			realtime = JSON.parse((await fs.readFile("data/gtfs/realtime.json")).toString());
+			realtime = JSON.parse(await fs.readFile("data/gtfs/realtime.json", "utf-8"));
 		} else {
 			realtime = {"Entity": []};
 		}
@@ -124,7 +124,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 		tripUpdatesMap.set(u.trip_id, u);
 	});
 
-	let stations: Station[] = JSON.parse((await fs.readFile("data/parsed/stations.json")).toString());
+	let stations: Station[] = JSON.parse(await fs.readFile("data/parsed/stations.json", "utf-8"));
 	let stationsMap: Map<number, Station> = new Map();
 	stations.map((s) => {
 		stationsMap.set(s.id, s);

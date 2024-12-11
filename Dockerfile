@@ -63,7 +63,7 @@ ENV PORT=3000
 # server.js is created by next build from the standalone output
 # https://nextjs.org/docs/pages/api-reference/next-config-js/output
 ENV HOSTNAME="0.0.0.0"
-CMD ["node", "server.js"]
+CMD ["node", "--max-old-space-size=500", "--expose-gc", "server.js"]
 
 # i just added these
 COPY --from=builder --chown=nextjs:nodejs /app/data ./data
