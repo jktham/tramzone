@@ -8,7 +8,7 @@ const fetcher = (url) => fetch(url).then((res) => res.json());
 export default function Home() {
 	const {data: lineData, error: linesError, isLoading: linesLoading} = useSWR("/api/lines", fetcher);
 	const {data: stationData, error: stationsError, isLoading: stationsLoading} = useSWR("/api/stations", fetcher);
-	const {data: tramData, error: tramsError, isLoading: tramsLoading} = useSWR("/api/trams?active=true", fetcher, {refreshInterval: 1000}); // refresh for testing
+	const {data: tramData, error: tramsError, isLoading: tramsLoading} = useSWR("/api/trams?active=true", fetcher, {refreshInterval: 1000});
 
 	const [focus, setFocus] = useState<any>(null);
 	const [overlay, setOverlay] = useState<boolean>(false);

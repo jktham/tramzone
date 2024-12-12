@@ -11,15 +11,18 @@ import VectorSource from "ol/source/Vector";
 import GeoJSON from "ol/format/GeoJSON";
 import Style from "ol/style/Style.js";
 import {Circle, Fill, Stroke} from "ol/style.js";
-import {getLineData, getStationData, getTramData} from "../utils/dataUtils";
+import {getInterpolatedTramData, getLineData, getStationData, getTramData, updateTramProgress} from "../utils/dataUtils";
 import Overlay from "ol/Overlay";
 import styles from "../styles/tramMap.module.css";
 import { Line, Station, Tram } from "../utils/types";
 
 // TODO: what is type of target (in onClick) / focus should we even define that?
-export default function TramMap({onClick,  focus, filter, lineData, stationData, tramData} : { onClick : (target : any) => void; focus : any; filter : {}; lineData : Line[]; stationData : Station[]; tramData : Tram[]; }) {
+export default function TramMap({onClick, focus, filter, lineData, stationData, tramData} : { onClick : (target : any) => void; focus : any; filter : {}; lineData : Line[]; stationData : Station[]; tramData : Tram[]; }) {
     // STATES AND REFS
     const [map, setMap] = useState<Map>(null);
+	/*const [currTramData, setCurrTramData] = useState(null); // OTHER METHOD
+	const [prevTramData, setPrevTramData] = useState(null);*/
+	const fps = 60;
 
     const overlayRef = useRef(null);
 
@@ -102,18 +105,45 @@ export default function TramMap({onClick,  focus, filter, lineData, stationData,
 			}),
 	});
 
-	useEffect(() => {
-		map?.getAllLayers().find((v) => v.getClassName().startsWith("trams"))?.setSource(new VectorSource({
+	/*
+			map?.getAllLayers().find((v) => v.getClassName().startsWith("trams"))?.setSource(new VectorSource({
 			features: new GeoJSON().readFeatures(getTramData(tramData, lineData), {
 				featureProjection: view.getProjection(),
 			})
 		}))
+	 */
+
+	useEffect(() => {
+		//Implementing the setInterval method
+		const interval = setInterval(() => {
+
+			// OTHER METHOD
+			/*map?.getAllLayers().find((v) => v.getClassName().startsWith("trams"))?.setSource(new VectorSource({
+				features: new GeoJSON().readFeatures(getInterpolatedTramData(prevTramData, currTramData, lineData), {
+					featureProjection: view.getProjection(),
+				})
+			}))*/
+			map?.getAllLayers().find((v) => v.getClassName().startsWith("trams"))?.setSource(new VectorSource({
+				features: new GeoJSON().readFeatures(getTramData(updateTramProgress(tramData, (new Date()).valueOf()), lineData), {
+					featureProjection: view.getProjection(),
+				})
+			}))
+		}, 1000 / fps);
+
+		//Clearing the interval
+		return () => clearInterval(interval);
 	}, [tramData]);
+
+	// OTHER METHOD
+	/*useEffect(() => {
+		setPrevTramData(currTramData)
+		setCurrTramData(tramData)
+	}, [tramData]);*/
 
 	useEffect(() => {
 		const map = new Map({
 			target: "map",
-			layers: [stadiaLayer, lineLayer, stationLayer, tramLayer],
+			layers: [osmLayer, lineLayer, stationLayer, tramLayer],
 		});
 
 		map.setView(
@@ -153,13 +183,10 @@ export default function TramMap({onClick,  focus, filter, lineData, stationData,
                 }
                 }
                 let clickedCoords = e.coordinate;
-                //console.log(layer.getClassName());
                 overlayLayer.setPosition(clickedCoords);
 
             });
 			onClick(selectedFeature);
-            //console.log(selectedFeature);
-            // console.log(selectedFeature?.values_);
 		});
 
 		setMap(map)

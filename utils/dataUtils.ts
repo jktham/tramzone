@@ -1,77 +1,81 @@
-import { getTramLocation } from "./mapUtils";
-import { Station, Line, Tram } from "./types";
+import {getTramLocation} from "./mapUtils";
+import {Station, Line, Tram} from "./types";
 
-export function getStationData (data: Station[]) {
-    let geoJson = {type: "FeatureCollection", features: []};
-    let additionalContent = { type: "station" };
-    for (let station of data) {
-        let feature = {
-            type: "Feature",
-            geometry: {type: "Point", coordinates: station.coords},
-            properties: { ...station, ...additionalContent },
-        };
-        geoJson.features.push(feature);
-    }
-    return geoJson;
+export function getStationData(data: Station[]) {
+	let geoJson = {type: "FeatureCollection", features: []};
+	let additionalContent = {type: "station"};
+	for (let station of data) {
+		let feature = {
+			type: "Feature",
+			geometry: {type: "Point", coordinates: station.coords},
+			properties: {...station, ...additionalContent},
+		};
+		geoJson.features.push(feature);
+	}
+	return geoJson;
 };
 
-export function getLineData (data: Line[]) {
-    let geoJSON = {type: "FeatureCollection", features: []};
-    for (let line of data) {
-        for (let segment of line.segments) {
-            let additionalContent = { type: "line" };
-            let feature = {
-                type: "Feature",
-                geometry: segment.geometry,
-                properties: { ...line, ...additionalContent },
-            };
-            geoJSON.features.push(feature);
-        }
-    }
-    return geoJSON;
+export function getLineData(data: Line[]) {
+	let geoJSON = {type: "FeatureCollection", features: []};
+	for (let line of data) {
+		for (let segment of line.segments) {
+			let additionalContent = {type: "line"};
+			let feature = {
+				type: "Feature",
+				geometry: segment.geometry,
+				properties: {...line, ...additionalContent},
+			};
+			geoJSON.features.push(feature);
+		}
+	}
+	return geoJSON;
 };
 
-export function getTramData (data: Tram[], lineData: Line[]) {
-    let geoJSON = {type: "FeatureCollection", features: []};
-    for (let tram of data) {
-        let additionalContent = {type: "tram", color: lineData.find((l) => l.name == tram.route_name)?.color, name: tram.route_name}
-        let feature = {
-            type: "Feature",
-            geometry: {
-                type: "Point",
-                coordinates: getTramLocation(tram, lineData),
-            },
-            properties: {...tram, ...additionalContent},
-        };
-        geoJSON.features.push(feature);
-    }
-    return geoJSON;
+export function getTramData(data: Tram[], lineData: Line[]) {
+	let geoJSON = {type: "FeatureCollection", features: []};
+	for (let tram of data) {
+		let additionalContent = {type: "tram", color: lineData.find((l) => l.name == tram.route_name)?.color, name: tram.route_name}
+		let feature = {
+			type: "Feature",
+			geometry: {
+				type: "Point",
+				coordinates: getTramLocation(tram, lineData),
+			},
+			properties: {...tram, ...additionalContent},
+		};
+		geoJSON.features.push(feature);
+	}
+	return geoJSON;
+};
+
+// OTHER METHOD
+export function getInterpolatedTramData(prevData: Tram[], currData: Tram[], lineData: Line[]) {
 };
 
 export function updateTramProgress(trams: Tram[], time: number): Tram[] {
-    for (let tram of trams) {
-        tram.progress = 0; // todo: compare to prev progress to avoid backwards jumps
-        // sequence progress
-        tram.stops = tram.stops.map((s) => {
-            s.arrived = s.pred_arrival <= time;
-            s.departed = s.pred_departure <= time;
-        
-            if (s.arrived) {
-                tram.progress = Math.max(tram.progress, s.stop_sequence);
-            }
-            return s;
-        });
-        // segment progress
-        let prev_stop = tram.stops.find((s) => s.stop_sequence == Math.floor(tram.progress));
-        let next_stop = tram.stops.find((s) => s.stop_sequence == Math.floor(tram.progress + 1));
-        if (prev_stop && next_stop) {
-            if (prev_stop.departed) {
-                let p = prev_stop.pred_departure;
-                let n = next_stop.pred_arrival;
-                let frac = (time - p) / (n - p);
-                tram.progress += frac;
-            }
-        }
-    }
-    return trams;
+	for (let tram of trams) {
+		tram.progress = 0; // todo: compare to prev progress to avoid backwards jumps
+		// sequence progress
+		tram.stops = tram.stops.map((s) => {
+			s.arrived = s.pred_arrival <= time;
+			s.departed = s.pred_departure <= time;
+
+			if (s.arrived) {
+				tram.progress = Math.max(tram.progress, s.stop_sequence);
+			}
+			return s;
+		});
+		// segment progress
+		let prev_stop = tram.stops.find((s) => s.stop_sequence == Math.floor(tram.progress));
+		let next_stop = tram.stops.find((s) => s.stop_sequence == Math.floor(tram.progress + 1));
+		if (prev_stop && next_stop) {
+			if (prev_stop.departed) {
+				let p = prev_stop.pred_departure;
+				let n = next_stop.pred_arrival;
+				let frac = (time - p) / (n - p);
+				tram.progress += frac;
+			}
+		}
+	}
+	return trams;
 }
