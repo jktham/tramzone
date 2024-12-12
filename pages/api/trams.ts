@@ -3,6 +3,7 @@ import fs from "node:fs/promises";
 import { Service, ServiceException, Station, StopStatus, Tram, TramTrip, TripStatus, TripUpdate, Stop } from "../../utils/types";
 import { parseData } from "../../utils/parseUtils"
 import { existsSync } from "node:fs";
+import { updateTramProgress } from "../../utils/dataUtils";
 
 type QueryParams = {
 	active: boolean; // return only currently active trams
@@ -211,27 +212,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 			}
 			return s;
 		});
-		// sequence progress
-		t.stops = t.stops.map((s) => {
-			s.arrived = s.pred_arrival <= time;
-			s.departed = s.pred_departure <= time;
 
-			if (s.arrived) {
-				t.progress = Math.max(t.progress, s.stop_sequence);
-			}
-			return s;
-		});
-		// segment progress
-		let prev_stop = t.stops.find((s) => s.stop_sequence == Math.floor(t.progress));
-		let next_stop = t.stops.find((s) => s.stop_sequence == Math.floor(t.progress + 1));
-		if (prev_stop && next_stop) {
-			if (prev_stop.departed) {
-				let p = prev_stop.pred_departure;
-				let n = next_stop.pred_arrival;
-				let frac = (time - p) / (n - p);
-				t.progress += frac;
-			}
-		}
+        let prev_stop = t.stops.find((s) => s.stop_sequence == Math.floor(t.progress));
+        let next_stop = t.stops.find((s) => s.stop_sequence == Math.floor(t.progress + 1));
 		if (next_stop) {
 			t.delay = next_stop.arrival_delay;
 		}
@@ -241,6 +224,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
 		return t;
 	});
+
+	updateTramProgress(trams, time);
 
 	if (query.active) {
 		trams = trams.filter((t) => t.active);

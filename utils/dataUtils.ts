@@ -47,3 +47,31 @@ export function getTramData (data: Tram[], lineData: Line[]) {
     }
     return geoJSON;
 };
+
+export function updateTramProgress(trams: Tram[], time: number): Tram[] {
+    for (let tram of trams) {
+        tram.progress = 0; // todo: compare to prev progress to avoid backwards jumps
+        // sequence progress
+        tram.stops = tram.stops.map((s) => {
+            s.arrived = s.pred_arrival <= time;
+            s.departed = s.pred_departure <= time;
+        
+            if (s.arrived) {
+                tram.progress = Math.max(tram.progress, s.stop_sequence);
+            }
+            return s;
+        });
+        // segment progress
+        let prev_stop = tram.stops.find((s) => s.stop_sequence == Math.floor(tram.progress));
+        let next_stop = tram.stops.find((s) => s.stop_sequence == Math.floor(tram.progress + 1));
+        if (prev_stop && next_stop) {
+            if (prev_stop.departed) {
+                let p = prev_stop.pred_departure;
+                let n = next_stop.pred_arrival;
+                let frac = (time - p) / (n - p);
+                tram.progress += frac;
+            }
+        }
+    }
+    return trams;
+}
