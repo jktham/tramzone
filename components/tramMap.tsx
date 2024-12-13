@@ -15,11 +15,16 @@ import {getInterpolatedTramData, getLineData, getStationData, getTramData, updat
 import Overlay from "ol/Overlay";
 import styles from "../styles/tramMap.module.css";
 import { Line, Station, Tram } from "../utils/types";
+import { Feature, Geolocation } from "ol";
+import { Point } from "ol/geom";
+import { Coordinate } from "ol/coordinate";
 
 // TODO: what is type of target (in onClick) / focus should we even define that?
 export default function TramMap({onClick, focus, filter, lineData, stationData, tramData} : { onClick : (target : any) => void; focus : any; filter : {}; lineData : Line[]; stationData : Station[]; tramData : Tram[]; }) {
     // STATES AND REFS
     const [map, setMap] = useState<Map>(null);
+	const [userLocation, setUserLocation] = useState<Coordinate>([0,0]);
+
 	/*const [currTramData, setCurrTramData] = useState(null); // OTHER METHOD
 	const [prevTramData, setPrevTramData] = useState(null);*/
 	const fps = 60;
@@ -32,6 +37,12 @@ export default function TramMap({onClick, focus, filter, lineData, stationData, 
 		zoom: 15,
 	});
 
+	// Get the users live location
+	navigator.geolocation.getCurrentPosition(position => {
+		const { latitude, longitude } = position.coords;
+		setUserLocation(OlProj.fromLonLat([longitude, latitude]));
+	});
+	
 	const stadiaLayer = new TileLayer({
 		source: new StadiaMaps({
 			layer: "alidade_smooth",
@@ -95,7 +106,7 @@ export default function TramMap({onClick, focus, filter, lineData, stationData, 
 				image: new Circle({
 					radius: 8,
 					fill: new Fill({
-						color: feature.get("color"),
+						color: feature.get("color"),	
 					}),
 					stroke: new Stroke({
 						width: 3,
@@ -104,6 +115,38 @@ export default function TramMap({onClick, focus, filter, lineData, stationData, 
 				}),
 			}),
 	});
+
+	const userLocationLayer = new VectorLayer({
+		className: "userLoc",
+		visible: true,
+		source: new VectorSource({
+			features: [new Feature({
+				geometry: new Point(userLocation)
+			})]
+		}),
+		style: new Style({
+			image: new Circle({
+				radius: 10,
+				fill: new Fill({
+					color: "#000000",
+				}),
+				stroke: new Stroke({
+					width: 3,
+					color: "#000000"
+				})
+			}),
+		}),
+		
+	});
+
+	// Add the current live position of the user to the map
+	useEffect(() => {
+		map?.getAllLayers().find((v) => v.getClassName().startsWith("userLoc"))?.setSource(new VectorSource({
+			features: [new Feature({
+				geometry: new Point(userLocation)
+			})]
+		}))
+	}, [userLocation]);
 
 	/*
 			map?.getAllLayers().find((v) => v.getClassName().startsWith("trams"))?.setSource(new VectorSource({
@@ -143,7 +186,7 @@ export default function TramMap({onClick, focus, filter, lineData, stationData, 
 	useEffect(() => {
 		const map = new Map({
 			target: "map",
-			layers: [osmLayer, lineLayer, stationLayer, tramLayer],
+			layers: [osmLayer, lineLayer, stationLayer, tramLayer, userLocationLayer],
 		});
 
 		map.setView(
@@ -152,6 +195,7 @@ export default function TramMap({onClick, focus, filter, lineData, stationData, 
 				zoom: 15,
 			})
 		);
+
 
         const overlayLayer = new Overlay({
             element:overlayRef.current
@@ -188,6 +232,11 @@ export default function TramMap({onClick, focus, filter, lineData, stationData, 
             });
 			onClick(selectedFeature);
 		});
+
+		// geolocation.on("change", function (e) {
+		// 	var loc = geolocation.getPosition();
+		// 	setUserLocation(loc);
+		// })
 
 		setMap(map)
 
