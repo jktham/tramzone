@@ -38,10 +38,10 @@ export default function TramMap({onClick, focus, filter, lineData, stationData, 
 	});
 
 	// Get the users live location
-	navigator.geolocation.getCurrentPosition(position => {
-		const { latitude, longitude } = position.coords;
-		setUserLocation(OlProj.fromLonLat([longitude, latitude]));
-	});
+	var geolocation = new Geolocation({
+		tracking: true,
+		projection: view.getProjection()
+	  });
 	
 	const stadiaLayer = new TileLayer({
 		source: new StadiaMaps({
@@ -233,10 +233,11 @@ export default function TramMap({onClick, focus, filter, lineData, stationData, 
 			onClick(selectedFeature);
 		});
 
-		// geolocation.on("change", function (e) {
-		// 	var loc = geolocation.getPosition();
-		// 	setUserLocation(loc);
-		// })
+		geolocation.on("change", function (e) {
+			var loc = geolocation.getPosition();
+			console.log(loc);
+			setUserLocation(loc);
+		})
 
 		setMap(map)
 
