@@ -108,12 +108,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 			trip_id: t["TripUpdate"]["Trip"]["TripId"],
 			trip_time: t["TripUpdate"]["Trip"]["StartTime"],
 			trip_date: t["TripUpdate"]["Trip"]["StartDate"],
-			trip_status: String(t["TripUpdate"]["Trip"]["ScheduleRelationship"] || "scheduled").toLowerCase() as TripStatus,
+			trip_status: String(t["TripUpdate"]["Trip"]["ScheduleRelationship"] || "scheduled").toLowerCase(),
 			stops: t["TripUpdate"]["StopTimeUpdate"]?.map((u) => {
 				return {
 					stop_id: u["StopId"],
 					stop_sequence: u["StopSequence"],
-					stop_status: String(u["ScheduleRelationship"] || "scheduled").toLowerCase() as StopStatus,
+					stop_status: String(u["ScheduleRelationship"] || "scheduled").toLowerCase(),
 					arrival_delay: u["Arrival"] ? u["Arrival"]["Delay"] : 0,
 					departure_delay: u["Departure"] ? u["Departure"]["Delay"] : 0,
 				};
@@ -136,7 +136,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 		return {
 			trip_id: t.trip_id,
 			trip_name: t.trip_name,
-			trip_status: update?.trip_status || TripStatus.Scheduled,
+			trip_status: update?.trip_status || "scheduled",
 			headsign: t.headsign,
 			direction: t.direction,
 			route_id: t.route_id,
@@ -154,7 +154,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 					stop_diva: station.diva,
 					stop_name: station.name,
 					stop_sequence: s.stop_sequence,
-					stop_status: u?.stop_status || StopStatus.Scheduled,
+					stop_status: u?.stop_status || "scheduled",
 					arrival: today.getTime() + s.arrival,
 					departure: today.getTime() + s.departure,
 					arrival_delay: u?.arrival_delay || 0,
@@ -201,12 +201,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 		// quick fix for scuffed data, todo: handle skipped stops
 		t.stops = t.stops.map((s) => {
 			let ns = t.stops.find((s2) => s2.stop_sequence == s.stop_sequence + 1);
-			if (s.pred_departure <= s.pred_arrival && s.stop_status != StopStatus.Skipped) {
+			if (s.pred_departure <= s.pred_arrival && s.stop_status != "skipped") {
 				// if (s.stop_sequence != 0 && s.stop_sequence != t.stops.length) {
 				// 	s.pred_departure = s.pred_arrival + 1; // add 1 to indicate modified
 				// }
 			}
-			if (ns && s.pred_departure >= ns.pred_arrival && ns.stop_status != StopStatus.Skipped) { // try to interpolate inner stop times from 10% - 90%
+			if (ns && s.pred_departure >= ns.pred_arrival && ns.stop_status != "skipped") { // try to interpolate inner stop times from 10% - 90%
 				s.pred_departure = (s.pred_arrival*9 + ns.pred_departure*1) / 10 + 1;
 				ns.pred_arrival = (s.pred_arrival*1 + ns.pred_departure*9) / 10 + 1;
 			}

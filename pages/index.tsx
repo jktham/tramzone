@@ -9,6 +9,7 @@ export default function Home() {
 	const {data: lineData, error: linesError, isLoading: linesLoading} = useSWR("/api/lines", fetcher);
 	const {data: stationData, error: stationsError, isLoading: stationsLoading} = useSWR("/api/stations", fetcher);
 	const {data: tramData, error: tramsError, isLoading: tramsLoading} = useSWR("/api/trams?active=true", fetcher, {refreshInterval: 1000});
+	// const {data: tramData, error: tramsError, isLoading: tramsLoading} = useSWR(`/api/tramsHist?date=2024-12-11&active=true&timeOffset=${-86400000 * 2}`, fetcher, {refreshInterval: 1000});
 
 	const [focus, setFocus] = useState<any>(null);
 	const [overlay, setOverlay] = useState<boolean>(false);

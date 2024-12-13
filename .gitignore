@@ -2,6 +2,7 @@
 
 /data/gtfs
 /data/parsed
+/data/hist
 
 # dependencies
 /node_modules

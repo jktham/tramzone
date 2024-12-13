@@ -27,7 +27,7 @@ export default function TramMap({onClick, focus, filter, lineData, stationData, 
 
 	/*const [currTramData, setCurrTramData] = useState(null); // OTHER METHOD
 	const [prevTramData, setPrevTramData] = useState(null);*/
-	const fps = 60;
+	const fps = 10;
 
     const overlayRef = useRef(null);
 
@@ -167,7 +167,7 @@ export default function TramMap({onClick, focus, filter, lineData, stationData, 
 				})
 			}))*/
 			map?.getAllLayers().find((v) => v.getClassName().startsWith("trams"))?.setSource(new VectorSource({
-				features: new GeoJSON().readFeatures(getTramData(updateTramProgress(tramData, (new Date()).valueOf()), lineData), {
+				features: new GeoJSON().readFeatures(getTramData(updateTramProgress(tramData, (new Date()).valueOf() + (-86400000 * 0)), lineData), {
 					featureProjection: view.getProjection(),
 				})
 			}))
