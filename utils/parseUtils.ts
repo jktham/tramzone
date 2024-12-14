@@ -90,7 +90,7 @@ async function parseStations() {
 async function parseLines() {
 	console.log("parsing dataset lines");
 
-	let lineColors = JSON.parse((await fs.readFile(`data/datasets/lineColors.json`)).toString());
+	let lineColors = JSON.parse(await fs.readFile(`data/datasets/lineColors.json`, "utf-8"));
 	let geojson = await shapefile.read("data/datasets/lines.shp", "data/datasets/lines.dbf");
 
 	let lines: Line[] = [];
@@ -121,7 +121,20 @@ async function parseLines() {
 			}
 		}
 	}
+
 	lines.find((l) => l.name == "10").start = "Zürich, Bahnhofplatz/HB";
+	let lineSegmentOverrides = JSON.parse(await fs.readFile(`data/datasets/lineSegments.json`, "utf-8"));
+
+	for (let segmentOverride of lineSegmentOverrides) {
+		let lineSegments = lines.find((l) => l.name == segmentOverride.name).segments;
+		let found = lineSegments.find((s) => s.from == segmentOverride.segment.from && s.to == segmentOverride.segment.to);
+		if (found) {
+			lineSegments[lineSegments.indexOf(found)] = segmentOverride.segment;
+		} else {
+			lineSegments.push(segmentOverride.segment);
+		}
+	}
+
 	lines.sort((a, b) => Number(a.name) - Number(b.name));
 	for (let line of lines) {
 		line.segments.sort((a, b) => a.sequence - b.sequence);
@@ -145,6 +158,11 @@ async function parseLines() {
 async function getGtfs(date: string) {
 	// get static data
 	if (!(await fs.readdir("data/gtfs/")).includes(`${date}`)) {
+		let old = await fs.readdir("data/gtfs/");
+		for (let f of old) {
+			await fs.rm(`data/gtfs/${f}`, {recursive: true, force: true});
+		}
+
 		console.log("getting new gtfs data: ", date);
 		let gtfs_static = await fetch(`https://opentransportdata.swiss/de/dataset/timetable-2024-gtfs2020/resource_permalink/gtfs_fp2024_${date}.zip`);
 		// @ts-ignore: dumb error
@@ -153,7 +171,7 @@ async function getGtfs(date: string) {
 		await fs.writeFile(`data/gtfs/${date}.zip`, str);
 		console.log("unzipping");
 		await createReadStream(`data/gtfs/${date}.zip`).pipe(unzipper.Extract({path: `data/gtfs/${date}`})).promise();
-		await fs.unlink(`data/gtfs/${date}.zip`);
+		await fs.rm(`data/gtfs/${date}.zip`);
 		console.log("done");
 	} else {
 		console.log("using old gtfs data: ", date);
