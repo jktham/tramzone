@@ -48,10 +48,21 @@ export function getTramData(data: Tram[], lineData: Line[]) {
 	return geoJSON;
 };
 
+// todo: figure out how to actually smooth out sudden delay changes, just prevents backwards jumps for now
+export function updateTramProgressInterpolated(trams: Tram[], prevTrams: Tram[], time: number): Tram[] {
+	trams = updateTramProgress(trams, time);
+	for (let tram of trams) {
+		let prev = prevTrams?.find((t) => t.trip_name == tram.trip_name);
+		if (prev) {
+			tram.progress = Math.max(prev.progress, tram.progress);
+		}
+	}
+	return trams;
+}
 
 export function updateTramProgress(trams: Tram[], time: number): Tram[] {
 	for (let tram of trams) {
-		tram.progress = 0; // todo: compare to prev progress to avoid backwards jumps
+		tram.progress = 0;
 		// sequence progress
 		tram.stops = tram.stops.map((s) => {
 			s.arrived = s.pred_arrival <= time;

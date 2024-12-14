@@ -11,7 +11,7 @@ import VectorSource from "ol/source/Vector";
 import GeoJSON from "ol/format/GeoJSON";
 import Style from "ol/style/Style.js";
 import {Circle, Fill, Stroke} from "ol/style.js";
-import {getLineData, getStationData, getTramData, updateTramProgress} from "../utils/dataUtils";
+import {getLineData, getStationData, getTramData, updateTramProgress, updateTramProgressInterpolated} from "../utils/dataUtils";
 import Overlay from "ol/Overlay";
 import styles from "../styles/tramMap.module.css";
 import { Line, Station, Tram } from "../utils/types";
@@ -27,6 +27,7 @@ export default function TramMap({onClick, focus, filter, lineData, stationData, 
     const [map, setMap] = useState<Map>(null);
 	const [userLocation, setUserLocation] = useState<Coordinate>([0,0]);
 	const {theme, setTheme} = useTheme();
+	const [prevTramData, setPrevTramData] = useState<Tram[]>([]);
 
 	const fps = 10;
 
@@ -164,12 +165,15 @@ export default function TramMap({onClick, focus, filter, lineData, stationData, 
 	useEffect(() => {
 		const interval = setInterval(() => {
 			map?.getAllLayers().find((v) => v.getClassName().startsWith("trams"))?.setSource(new VectorSource({
-				features: new GeoJSON().readFeatures(getTramData(updateTramProgress(tramData, (new Date()).valueOf() + (-86400000 * 0)), lineData), {
+				features: new GeoJSON().readFeatures(getTramData(updateTramProgressInterpolated(tramData, prevTramData, (new Date()).valueOf() + (-86400000 * 0)), lineData), {
 					featureProjection: view.getProjection(),
 				})
 			}))
 		}, 1000 / fps);
-		return () => clearInterval(interval);
+		setPrevTramData(tramData);
+		return () => {
+			clearInterval(interval)
+		};
 	}, [tramData]);
 
 	useEffect(() => {
