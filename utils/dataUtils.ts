@@ -48,9 +48,6 @@ export function getTramData(data: Tram[], lineData: Line[]) {
 	return geoJSON;
 };
 
-// OTHER METHOD
-export function getInterpolatedTramData(prevData: Tram[], currData: Tram[], lineData: Line[]) {
-};
 
 export function updateTramProgress(trams: Tram[], time: number): Tram[] {
 	for (let tram of trams) {

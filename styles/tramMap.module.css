@@ -5,3 +5,38 @@
 	top: 0;
 	left: 0;
 }
+
+.attribution {
+	position: absolute;
+	right: 0;
+	bottom: 3rem;
+	font-size: 1rem;
+	background: none;
+}
+
+.attribution ul {
+	writing-mode: vertical-lr;
+	display: flex;
+	flex-direction: row;
+	flex-wrap: nowrap;
+	list-style-type: none;
+	gap: 1rem;
+	transform: rotate(180deg);
+}
+
+.attribution li {
+	color: #000;
+	font-family: "JetBrains Mono", monospace;
+	font-size: 0.5rem;
+	font-style: normal;
+	font-weight: 400;
+	line-height: normal;
+}
+
+.attribution li a {
+	text-decoration: none;
+}
+
+.attribution button {
+	display: none;
+}

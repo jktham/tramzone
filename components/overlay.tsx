@@ -1,6 +1,9 @@
 import styles from "../styles/overlay.module.css"
+import LineSymbol from "./lineSymbol";
 
 export default function Overlay({data} : any) {
+
+	console.log(data)
 
     const type = data.type
 
@@ -11,12 +14,10 @@ export default function Overlay({data} : any) {
 
     const title = isTram ? ("Tram " + data.route_name + " " + data.trip_name) : isStation ? data.name : "Line " + data.name;
 
-    console.log(data)
-
-    return <>
+	return <>
         <div className={styles.overlay}>
             <div className={styles.titleBar}>
-                {isStation ? <></> : <span style={{background: data.color}} className={styles.lineIcon}>{isLine ? data.name : data.route_name}</span>}
+                {isStation ? <></> : <LineSymbol data={data}></LineSymbol>}
                 <h1>{title}</h1>
             </div>
         </div>

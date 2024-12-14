@@ -11,25 +11,26 @@ import VectorSource from "ol/source/Vector";
 import GeoJSON from "ol/format/GeoJSON";
 import Style from "ol/style/Style.js";
 import {Circle, Fill, Stroke} from "ol/style.js";
-import {getInterpolatedTramData, getLineData, getStationData, getTramData, updateTramProgress} from "../utils/dataUtils";
+import {getLineData, getStationData, getTramData, updateTramProgress} from "../utils/dataUtils";
 import Overlay from "ol/Overlay";
 import styles from "../styles/tramMap.module.css";
 import { Line, Station, Tram } from "../utils/types";
 import { Feature, Geolocation } from "ol";
 import { Point } from "ol/geom";
 import { Coordinate } from "ol/coordinate";
+import {Attribution} from "ol/control";
+import {useTheme} from "next-themes";
 
 // TODO: what is type of target (in onClick) / focus should we even define that?
-export default function TramMap({onClick, focus, filter, lineData, stationData, tramData} : { onClick : (target : any) => void; focus : any; filter : {}; lineData : Line[]; stationData : Station[]; tramData : Tram[]; }) {
+export default function TramMap({onClick, focus, filter, lineData, stationData, tramData, overlay} : { onClick : (target : any) => void; focus : any; filter : {}; lineData : Line[]; stationData : Station[]; tramData : Tram[]; overlay : any}) {
     // STATES AND REFS
     const [map, setMap] = useState<Map>(null);
 	const [userLocation, setUserLocation] = useState<Coordinate>([0,0]);
+	const {theme, setTheme} = useTheme();
 
-	/*const [currTramData, setCurrTramData] = useState(null); // OTHER METHOD
-	const [prevTramData, setPrevTramData] = useState(null);*/
 	const fps = 10;
 
-    const overlayRef = useRef(null);
+   const overlayRef = useRef(null);
 
     // SET UP THE MAP
 	const view = new View({
@@ -44,14 +45,16 @@ export default function TramMap({onClick, focus, filter, lineData, stationData, 
 	  });
 	
 	const stadiaLayer = new TileLayer({
+		className: "base",
 		source: new StadiaMaps({
-			layer: "alidade_smooth",
+			layer: theme === "light" ? "alidade_smooth" : "alidade_smooth_dark",
 			retina: true,
 		}),
 	});
 
 	const osmLayer = new TileLayer({
 		source: new OSM(),
+
 	});
 
 	const lineLayer = new VectorLayer({
@@ -87,7 +90,7 @@ export default function TramMap({onClick, focus, filter, lineData, stationData, 
 				}),
 				stroke: new Stroke({
 					width: 3,
-					color: "#000000"
+					color: "#606060"
 				})
 			}),
 		}),
@@ -124,19 +127,22 @@ export default function TramMap({onClick, focus, filter, lineData, stationData, 
 				geometry: new Point(userLocation)
 			})]
 		}),
-		style: new Style({
-			image: new Circle({
-				radius: 10,
-				fill: new Fill({
-					color: "#000000",
-				}),
-				stroke: new Stroke({
-					width: 3,
-					color: "#000000"
+		style: [new Style({
+				image: new Circle({
+					radius: 6.5,
+					fill: new Fill({
+						color: "rgba(45,110,133,1)",
+					})
+				})
+			}), new Style({
+				image: new Circle({
+					radius: 9.5,
+					fill: new Fill({
+						color: "rgba(45,110,133,0.3)",
+					})
 				})
 			}),
-		}),
-		
+		]
 	});
 
 	// Add the current live position of the user to the map
@@ -148,46 +154,42 @@ export default function TramMap({onClick, focus, filter, lineData, stationData, 
 		}))
 	}, [userLocation]);
 
-	/*
-			map?.getAllLayers().find((v) => v.getClassName().startsWith("trams"))?.setSource(new VectorSource({
-			features: new GeoJSON().readFeatures(getTramData(tramData, lineData), {
-				featureProjection: view.getProjection(),
-			})
+	useEffect(() => {
+		map?.getAllLayers().find((v) => v.getClassName().startsWith("base"))?.setSource(new StadiaMaps({
+			layer: theme === "light" ? "alidade_smooth" : "alidade_smooth_dark",
+			retina: true,
 		}))
-	 */
+	}, [theme]);
 
 	useEffect(() => {
-		//Implementing the setInterval method
 		const interval = setInterval(() => {
-
-			// OTHER METHOD
-			/*map?.getAllLayers().find((v) => v.getClassName().startsWith("trams"))?.setSource(new VectorSource({
-				features: new GeoJSON().readFeatures(getInterpolatedTramData(prevTramData, currTramData, lineData), {
-					featureProjection: view.getProjection(),
-				})
-			}))*/
 			map?.getAllLayers().find((v) => v.getClassName().startsWith("trams"))?.setSource(new VectorSource({
 				features: new GeoJSON().readFeatures(getTramData(updateTramProgress(tramData, (new Date()).valueOf() + (-86400000 * 0)), lineData), {
 					featureProjection: view.getProjection(),
 				})
 			}))
 		}, 1000 / fps);
-
-		//Clearing the interval
 		return () => clearInterval(interval);
 	}, [tramData]);
 
-	// OTHER METHOD
-	/*useEffect(() => {
-		setPrevTramData(currTramData)
-		setCurrTramData(tramData)
-	}, [tramData]);*/
-
 	useEffect(() => {
+
+		const attr = new Attribution({
+			className: styles.attribution,
+			collapsible: false
+		})
+
 		const map = new Map({
 			target: "map",
-			layers: [osmLayer, lineLayer, stationLayer, tramLayer, userLocationLayer],
+			layers: [stadiaLayer, /*lineLayer, */stationLayer, tramLayer, userLocationLayer],
+			controls: [attr]
 		});
+
+		const overlayLayer = new Overlay({
+			className: "overlay",
+			element: overlayRef.current
+		});
+		map.addOverlay(overlayLayer)
 
 		map.setView(
 			new View({
@@ -195,12 +197,6 @@ export default function TramMap({onClick, focus, filter, lineData, stationData, 
 				zoom: 15,
 			})
 		);
-
-
-        const overlayLayer = new Overlay({
-            element:overlayRef.current
-          });
-        map.addOverlay(overlayLayer);
 
 		map.on("click", function (e) {
 			let selectedFeature;
@@ -215,27 +211,28 @@ export default function TramMap({onClick, focus, filter, lineData, stationData, 
             }});
 
 			map.forEachFeatureAtPixel(e.pixel, function (feature, layer) {
-                let layerClassName = layer.getClassName();
-                if (selectedFeature) {}
-                else {
-                if (!hasTramFeatures && !hasStationFeatures) {selectedFeature = feature;}
-                else if (!hasTramFeatures) {
-                    if (layerClassName === "stations") {selectedFeature = feature;}
-                }
-                else {
-                    if (layerClassName === "trams") selectedFeature = feature;
-                }
-                }
-                let clickedCoords = e.coordinate;
-                overlayLayer.setPosition(clickedCoords);
+				let layerClassName = layer.getClassName();
+				if (selectedFeature) {
+				} else {
+					if (!hasTramFeatures && !hasStationFeatures) {
+						selectedFeature = feature;
+					} else if (!hasTramFeatures) {
+						if (layerClassName === "stations") {
+							selectedFeature = feature;
+						}
+					} else {
+						if (layerClassName === "trams") selectedFeature = feature;
+					}
+				}
+				let clickedCoords = e.coordinate;
+				overlayLayer.setPosition(clickedCoords);
 
-            });
+			});
 			onClick(selectedFeature);
 		});
 
 		geolocation.on("change", function (e) {
 			var loc = geolocation.getPosition();
-			console.log(loc);
 			setUserLocation(loc);
 		})
 
@@ -249,6 +246,7 @@ export default function TramMap({onClick, focus, filter, lineData, stationData, 
 
 	return (
 		<>
+			<div ref={overlayRef}>{overlay}</div>
 			<div className={styles.map} id="map" />
 		</>
 	);
