@@ -41,9 +41,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 	let time = query.time || new Date().getTime();
 	time += query.timeOffset;
 
+	// todo: aaaaa night trams only work until 1 hour past midnight??????
 	let today = new Date(time);
 	today.setUTCHours(-1, 0, 0, 0); // midnight CET
-	let weekday = (today.getUTCDay() + 1 + 6) % 7; // mon=0
+	let todayLocal = new Date(time + 3600000);
+	let weekday = (todayLocal.getUTCDay() + 6) % 7; // mon=0
 
 	let tramTrips: TramTrip[] = JSON.parse(await fs.readFile(`data/parsed/tramTrips${weekday}.json`, "utf-8"));
 	let services: Service[] = JSON.parse(await fs.readFile(`data/parsed/services.json`, "utf-8"));
@@ -79,8 +81,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 		for (let s of t.stops) {
 			if (s.arrival >= 86400000 || s.departure >= 86400000) { // only supports next day for now
 				offset = 6;
-				s.arrival = s.arrival % 86400000;
-				s.departure = s.departure % 86400000;
+				// s.arrival = s.arrival % 86400000;
+				// s.departure = s.departure % 86400000;
 			}
 		}
 		if (today.getTime() >= service.start && today.getTime() <= service.end) { // does not consider offset but eh

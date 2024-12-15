@@ -21,6 +21,10 @@ import { Coordinate } from "ol/coordinate";
 import {Attribution} from "ol/control";
 import {useTheme} from "next-themes";
 
+// todo: integrate these somehow
+export const timeOffset = 86400000 * -0;
+export const histDate = ""; // ex: 2024-12-01 -> set offset to n days ago
+
 // TODO: what is type of target (in onClick) / focus should we even define that?
 export default function TramMap({onClick, focus, filter, lineData, stationData, tramData, overlay} : { onClick : (target : any) => void; focus : any; filter : {}; lineData : Line[]; stationData : Station[]; tramData : Tram[]; overlay : any}) {
     // STATES AND REFS
@@ -164,7 +168,7 @@ export default function TramMap({onClick, focus, filter, lineData, stationData, 
 
 	useEffect(() => {
 		const interval = setInterval(() => {
-			let newTramData = updateTramProgressInterpolated(tramData, prevTramData, (new Date()).valueOf() + (-86400000 * 0));
+			let newTramData = updateTramProgressInterpolated(tramData, prevTramData, new Date().getTime() + timeOffset);
 			map?.getAllLayers().find((v) => v.getClassName().startsWith("trams"))?.setSource(new VectorSource({
 				features: new GeoJSON().readFeatures(getTramData(newTramData, lineData), {
 					featureProjection: view.getProjection(),
