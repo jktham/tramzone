@@ -40,7 +40,9 @@ function ThemeController({}) {
 
 	updateTheme();*/
 
-	setTheme("light")
+	useEffect(() => {
+		setTheme("light")
+	}, []);
 
 	return <></>
 }

@@ -185,7 +185,7 @@ export default function TramMap({onClick, focus, filter, lineData, stationData, 
 
 		const map = new Map({
 			target: "map",
-			layers: [stadiaLayer, /*lineLayer, */stationLayer, tramLayer, userLocationLayer],
+			layers: [stadiaLayer, lineLayer, stationLayer, tramLayer, userLocationLayer],
 			controls: [attr]
 		});
 
@@ -203,7 +203,7 @@ export default function TramMap({onClick, focus, filter, lineData, stationData, 
 		);
 
 		map.on("click", function (e) {
-			let selectedFeature;
+			/*let selectedFeature;
             let hasTramFeatures = map.hasFeatureAtPixel(e.pixel, {layerFilter: function(layerCandidate) {
                 return layerCandidate.getClassName() === "trams";
             }});
@@ -212,9 +212,14 @@ export default function TramMap({onClick, focus, filter, lineData, stationData, 
             }});
             let hasLineFeatures = map.hasFeatureAtPixel(e.pixel, {layerFilter: function(layerCandidate) {
                 return layerCandidate.getClassName() === "lines";
-            }});
+            }});*/
 
-			map.forEachFeatureAtPixel(e.pixel, function (feature, layer) {
+			let candidateFeatures = map.getFeaturesAtPixel(e.pixel);
+			let tramCandidate = candidateFeatures.find(f => f.getProperties().type === "tram")
+			let stationCandidate = candidateFeatures.find(f => f.getProperties().type === "station")
+			let lineCandidate = candidateFeatures.find(f => f.getProperties().type === "line")
+
+			/*map.forEachFeatureAtPixel(e.pixel, function (feature, layer) {
 				let layerClassName = layer.getClassName();
 				if (selectedFeature) {
 				} else {
@@ -228,11 +233,15 @@ export default function TramMap({onClick, focus, filter, lineData, stationData, 
 						if (layerClassName === "trams") selectedFeature = feature;
 					}
 				}
-				let clickedCoords = e.coordinate;
-				overlayLayer.setPosition(clickedCoords);
+			});*/
 
-			});
+			// TODO: in case this is a tram, update overlayPosition constantly
+			//		 in case it is a line, always use e.coordinate
+
+			let selectedFeature = tramCandidate || stationCandidate || lineCandidate
+
 			onClick(selectedFeature);
+			overlayLayer.setPosition(selectedFeature?.getProperties()?.geometry?.flatCoordinates || e.coordinate)
 		});
 
 		geolocation.on("change", function (e) {

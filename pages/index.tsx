@@ -3,6 +3,7 @@ import TramMap from "../components/tramMap";
 import {ReactElement, useState} from "react";
 import Overlay from "../components/overlay";
 import SEO from "../components/SEO";
+import Loading from "../components/loading";
 
 const fetcher = (url) => fetch(url).then((res) => res.json());
 
@@ -25,10 +26,16 @@ export default function Home() {
 		setOverlay(overlay);
 	}
 
+	if (linesLoading || stationsLoading || tramsLoading)
+		return <>
+			<SEO/>
+			<Loading></Loading>
+		</>
+
 	return (
 		<>
 			<SEO />
-			{!(linesLoading || stationsLoading || tramsLoading) && <TramMap onClick={onClick} filter={{}} focus={focus} lineData={lineData} stationData={stationData} tramData={tramData} overlay={overlay}></TramMap>}
+			<TramMap onClick={onClick} filter={{}} focus={focus} lineData={lineData} stationData={stationData} tramData={tramData} overlay={overlay}></TramMap>
 		</>
 	);
 }

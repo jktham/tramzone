@@ -3,7 +3,7 @@ import LineSymbol from "./lineSymbol";
 
 export default function Overlay({data} : any) {
 
-	console.log(data)
+	//console.log(data)
 
     const type = data.type
 
