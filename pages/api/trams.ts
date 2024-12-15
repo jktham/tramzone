@@ -16,6 +16,9 @@ type QueryParams = {
 
 type ResponseData = Tram[] | string;
 
+const updateCount = 10; // number of past updates to average
+let updateIndex = 0;
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse<ResponseData>) {
 	await parseData(false)
 
@@ -124,6 +127,40 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 	tripUpdates.map((u) => {
 		tripUpdatesMap.set(u.trip_id, u);
 	});
+
+	// avg updates
+	let pastUpdates: Map<string, TripUpdate>[] = [];
+	for (let i=0; i<updateCount; i++) {
+		if (existsSync(`data/parsed/pastUpdates${i}.json`)) {
+			let {time, update} = JSON.parse(await fs.readFile(`data/parsed/pastUpdates${i}.json`, "utf-8"))
+			if (new Date().getTime() - time < 20000) { // only valid if less than 20s old
+				pastUpdates.push(new Map(update));
+			}
+		}
+	}
+
+	updateIndex = (updateIndex+1) % updateCount;
+	await fs.writeFile(`data/parsed/pastUpdates${updateIndex}.json`, JSON.stringify({time: new Date().getTime(), update: Array.from(tripUpdatesMap.entries())}));
+
+	tripUpdatesMap.forEach((v, k) => {
+		if (!v.stops) {
+			return;
+		}
+		for (let stop of v.stops) {
+			let count = 1;
+			for (let pastUpdate of pastUpdates) {
+				let found = pastUpdate.get(k)?.stops?.find((s) => s.stop_id == stop.stop_id);
+				if (found) {
+					count++;
+					stop.arrival_delay += found.arrival_delay;
+					stop.departure_delay += found.departure_delay;
+				}
+			}
+			stop.arrival_delay /= count;
+			stop.departure_delay /= count;
+		}
+	});
+
 
 	let stations: Station[] = JSON.parse(await fs.readFile("data/parsed/stations.json", "utf-8"));
 	let stationsMap: Map<number, Station> = new Map();

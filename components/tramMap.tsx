@@ -27,7 +27,7 @@ export default function TramMap({onClick, focus, filter, lineData, stationData, 
     const [map, setMap] = useState<Map>(null);
 	const [userLocation, setUserLocation] = useState<Coordinate>([0,0]);
 	const {theme, setTheme} = useTheme();
-	const [prevTramData, setPrevTramData] = useState<Tram[]>([]);
+	const [prevTramData, setPrevTramData] = useState<Tram[]>();
 
 	const fps = 10;
 
@@ -164,17 +164,18 @@ export default function TramMap({onClick, focus, filter, lineData, stationData, 
 
 	useEffect(() => {
 		const interval = setInterval(() => {
+			let newTramData = updateTramProgressInterpolated(tramData, prevTramData, (new Date()).valueOf() + (-86400000 * 0));
 			map?.getAllLayers().find((v) => v.getClassName().startsWith("trams"))?.setSource(new VectorSource({
-				features: new GeoJSON().readFeatures(getTramData(updateTramProgressInterpolated(tramData, prevTramData, (new Date()).valueOf() + (-86400000 * 0)), lineData), {
+				features: new GeoJSON().readFeatures(getTramData(newTramData, lineData), {
 					featureProjection: view.getProjection(),
 				})
 			}))
+			setPrevTramData(JSON.parse(JSON.stringify(newTramData)));
 		}, 1000 / fps);
-		setPrevTramData(tramData);
 		return () => {
 			clearInterval(interval)
 		};
-	}, [tramData]);
+	}, [tramData, prevTramData]);
 
 	useEffect(() => {
 
@@ -239,6 +240,7 @@ export default function TramMap({onClick, focus, filter, lineData, stationData, 
 			//		 in case it is a line, always use e.coordinate
 
 			let selectedFeature = tramCandidate || stationCandidate || lineCandidate
+			console.log(selectedFeature);
 
 			onClick(selectedFeature);
 			overlayLayer.setPosition(selectedFeature?.getProperties()?.geometry?.flatCoordinates || e.coordinate)
