@@ -10,7 +10,7 @@ let AsyncLock = require("async-lock");
 import { parser } from 'stream-json';
 import { streamArray } from 'stream-json/streamers/StreamArray';
 
-function getUpdateDate() {
+async function getUpdateDate() {
 	// new gtfs data every monday and thursday (static at 10:00, rt at 15:00)
 	let updateTime = new Date();
 	updateTime.setHours(15, 0, 0, 0);
@@ -29,7 +29,18 @@ function getUpdateDate() {
 
 	let date = new Date(Math.max(monday.getTime(), thursday.getTime()));
 	let dateString = `${date.getFullYear()}-${("0" + (date.getMonth()+1)).slice(-2)}-${("0" + date.getDate()).slice(-2)}`;
-	return dateString;
+
+	try {
+		let check = await fetch(`https://opentransportdata.swiss/de/dataset/timetable-2024-gtfs2020/resource_permalink/gtfs_fp2024_${date}.zip`, {method: "HEAD"});
+		if (check.ok) {
+			return dateString
+		}
+	} catch {
+		
+	}
+
+	console.log("new data invalid, fallback to 2024-12-12")
+	return "2024-12-12";
 }
 
 function getTimeFromString(timeString: string) {
@@ -564,7 +575,7 @@ let lock = new AsyncLock();
 export async function parseData(force: boolean) {
 	// console.log("acquiring parse lock")
 	await lock.acquire("parseKey", async () => { // prevent interleaved parsing caused by simultaneous api calls
-		if (force || !existsSync("data/parsed/lastUpdate.json") || (await fs.readFile("data/parsed/lastUpdate.json", "utf-8")) != JSON.stringify({date: getUpdateDate(), version: version})) {
+		if (force || !existsSync("data/parsed/lastUpdate.json") || (await fs.readFile("data/parsed/lastUpdate.json", "utf-8")) != JSON.stringify({date: await getUpdateDate(), version: version})) {
 			console.log("parsing data");
 	
 			if (!existsSync("data/gtfs/")) {
@@ -574,7 +585,7 @@ export async function parseData(force: boolean) {
 				await fs.mkdir("data/parsed/");
 			}
 		
-			let date = getUpdateDate();
+			let date = await getUpdateDate();
 			
 			await parseLines();
 			await parseStations();
@@ -591,7 +602,7 @@ export async function parseData(force: boolean) {
 			await mapStopTimes();
 			await generateTramTrips();
 		
-			await fs.writeFile(`data/parsed/lastUpdate.json`, JSON.stringify({date: getUpdateDate(), version: version}));
+			await fs.writeFile(`data/parsed/lastUpdate.json`, JSON.stringify({date: await getUpdateDate(), version: version}));
 		
 			console.log("done");
 		}
