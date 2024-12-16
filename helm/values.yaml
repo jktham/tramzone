@@ -1,9 +1,11 @@
 frontend:
+  nameSuffix: "frontend"
+
   image:
     repository: null
     tag: latest
-    # cmd: ["node"]
-    # args: ["server.js"]
+    # cmd: ["your_cmd"]
+    # args: ["an", "array", "of", "values"]
 
   # Port to expose on the pod.
   port: 3000
@@ -17,6 +19,8 @@ frontend:
   url: null
 
 backend:
+  nameSuffix: "backend"
+
   image:
     repository: null
     tag: latest
@@ -30,8 +34,6 @@ backend:
   health: "/"
 
   # Define extra environment variables for your application
-  extraEnv: |
-  #  - name: DEBUG
-  #    value: true
+  extraEnv: {}
 
   url: null
