@@ -5,6 +5,7 @@ import Overlay from "../components/overlay";
 import SEO from "../components/SEO";
 import Loading from "../components/loading";
 import { timeOffset, histDate } from "../components/tramMap";
+import {useTheme} from "next-themes";
 
 const fetcher = (url) => fetch(url).then((res) => res.json());
 
@@ -17,6 +18,7 @@ export default function Home() {
 
 	const [focus, setFocus] = useState<any>(null);
 	const [overlay, setOverlay] = useState<ReactElement>(null);
+	const {theme, setTheme} = useTheme();
 
 	const onClick = (target : any) => {
 		if (target === undefined)
@@ -37,6 +39,7 @@ export default function Home() {
 	return (
 		<>
 			<SEO />
+			{/*<button style={{position: "absolute", zIndex: 1000}} onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>Mode</button>*/} {/* DEBUG */}
 			<TramMap onClick={onClick} filter={{}} focus={focus} lineData={lineData} stationData={stationData} tramData={tramData} overlay={overlay}></TramMap>
 		</>
 	);
