@@ -121,7 +121,8 @@ export default function TramMap({onClick, focus, filter, lineData, stationData, 
 		visible: true,
 		source: new VectorSource({
 			features: [new Feature({
-				geometry: new Point(userLocation)
+				geometry: new Point(userLocation),
+				type: "userLoc",
 			})]
 		}),
 		style: new Style({
@@ -143,7 +144,8 @@ export default function TramMap({onClick, focus, filter, lineData, stationData, 
 	useEffect(() => {
 		map?.getAllLayers().find((v) => v.getClassName().startsWith("userLoc"))?.setSource(new VectorSource({
 			features: [new Feature({
-				geometry: new Point(userLocation)
+				geometry: new Point(userLocation),
+				type: "userLoc"
 			})]
 		}))
 	}, [userLocation]);
@@ -222,20 +224,20 @@ export default function TramMap({onClick, focus, filter, lineData, stationData, 
                 else if (!hasTramFeatures) {
                     if (layerClassName === "stations") {selectedFeature = feature;}
                 }
-                else {
+                else if (hasLineFeatures) {
                     if (layerClassName === "trams") selectedFeature = feature;
                 }
                 }
                 let clickedCoords = e.coordinate;
                 overlayLayer.setPosition(clickedCoords);
-
+				// console.log(clickedCoords);
             });
 			onClick(selectedFeature);
 		});
 
 		geolocation.on("change", function (e) {
 			var loc = geolocation.getPosition();
-			console.log(loc);
+			// console.log(loc);
 			setUserLocation(loc);
 		})
 

@@ -14,7 +14,7 @@ export default function Home() {
 	const [overlay, setOverlay] = useState<boolean>(false);
 
 	const onClick = (target : any) => {
-		if (target === undefined)
+		if (target === undefined || target.values_.type === "userLoc")
 			return setOverlay(false);
 
 		setFocus(target);
