@@ -43,6 +43,7 @@ export default function TramMap({onClick, focus, filter, lineData, stationData, 
 
 	const [userLocation, setUserLocation] = useState<Coordinate>([0, 0]);
 	const [prevTramData, setPrevTramData] = useState<Tram[]>();
+	const [geolocation, setGeolocation] = useState<any>();
 
 	const fps = 10;
 
@@ -55,10 +56,12 @@ export default function TramMap({onClick, focus, filter, lineData, stationData, 
 	});
 
 	// Get the users live location
-	let geolocation = new Geolocation({
-		tracking: true,
-		projection: view.getProjection()
-	});
+	if (!geolocation) { // only once
+		setGeolocation(new Geolocation({
+			tracking: true,
+			projection: view.getProjection()
+		}));
+	}
 
 	// INITIALIZE MAP
 

@@ -121,3 +121,15 @@ export function getDisruptions(trams: Tram[]): Disruption[] {
 	}
 	return disruptions
 }
+
+export function getAverageDelay(trams: Tram[]): number {
+	let sum = 0;
+	let count = 0;
+	for (let t of trams) {
+		if (Math.abs(t.delay) < 86400) { // ignore completely lost trams lol
+			sum += Math.abs(t.delay);
+			count++;
+		}
+	}
+	return sum / count;
+}
