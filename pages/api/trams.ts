@@ -255,7 +255,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         let prev_stop = t.stops.find((s) => s.stop_sequence == Math.floor(t.progress));
         let next_stop = t.stops.find((s) => s.stop_sequence == Math.floor(t.progress + 1));
 		if (next_stop) {
-			t.delay = next_stop.arrival_delay;
+			t.delay = next_stop.departure_delay;
 		}
 		if (time >= t.stops[0].pred_arrival && time <= t.stops[t.stops.length-1].pred_departure) {
 			t.active = true;
