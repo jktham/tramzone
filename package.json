@@ -9,6 +9,7 @@
 	},
 	"dependencies": {
 		"async-lock": "^1.4.1",
+		"clsx": "^2.1.1",
 		"csv-parser": "^3.0.0",
 		"next": "^15.1.0",
 		"next-themes": "^0.2.1",

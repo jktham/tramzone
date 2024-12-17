@@ -1,0 +1,42 @@
+.info {
+	display: flex;
+	flex-direction: row;
+	gap: 0.75rem;
+	max-width: 100%;
+	align-items: flex-start;
+	justify-content: flex-start;
+}
+
+
+/*.overlay .titleBar {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	gap: 1.5rem;
+}*/
+
+.content {
+	display: flex;
+	gap: 0.5rem;
+	flex-direction: column;
+	min-width: 0;
+}
+
+.tags {
+	display: flex;
+	gap: 0.5rem;
+	flex-direction: row;
+}
+
+.info h1 {
+	--lh: 1.3rem; /* line height control */
+	color: var(--FG1);
+	font-family: "JetBrains Mono", monospace;
+	font-size: 1rem;
+	font-style: normal;
+	font-weight: 700;
+	line-height: var(--lh);
+	padding-top: calc((1.75rem - var(--lh)) /2);
+	text-wrap: wrap;
+	word-wrap: break-word;
+}

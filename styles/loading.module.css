@@ -24,14 +24,15 @@
 	top: 0;
 	left: 0;
 	align-items: center;
-	animation:spin 5s linear infinite;
+	animation:spin 9s linear infinite;
 }
 
 .station > span {
-	width: 10px;
-	height: 10px;
-	background-color: #F2F3F0;
-	border: 3px solid #606060;
+	box-sizing: content-box;
+	width: 7px;
+	height: 7px;
+	background-color: var(--BG2);
+	border: 3px solid var(--FG2);
 	border-radius: 100%;
 	transform: translateX(-3.5px);
 }
@@ -45,14 +46,15 @@
 	left: 0;
 	align-items: center;
 	justify-content: flex-end;
-	animation:spin 3s linear infinite;
+	animation:spin 4s linear infinite;
 }
 
 .tram > span {
-	width: 16px;
-	height: 16px;
+	box-sizing: content-box;
+	width: 13px;
+	height: 13px;
 	background-color: #49479d;
-	border: 3px solid #F2F3F0;
+	border: 3px solid var(--BG2);
 	border-radius: 100%;
 	transform: translateX(+6px);
 }

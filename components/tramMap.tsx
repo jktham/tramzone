@@ -27,7 +27,7 @@ export const timeOffset = 86400000 * -0;
 export const histDate = ""; // ex: 2024-12-01 -> set offset to n days ago
 
 // TODO: what is type of target (in onClick) / focus should we even define that?
-export default function TramMap({onClick, focus, filter, lineData, stationData, tramData, overlay}: { onClick: (target: any) => void; focus: any; filter: {}; lineData: Line[]; stationData: Station[]; tramData: Tram[]; overlay: any }) {
+export default function TramMap({onClick, focus, filter, lineData, stationData, tramData, overlay}: { onClick: (target: any, userLocation : Geolocation) => void; focus: any; filter: {}; lineData: Line[]; stationData: Station[]; tramData: Tram[]; overlay: any }) {
 
 	// STATES AND REFS
 
@@ -147,14 +147,14 @@ export default function TramMap({onClick, focus, filter, lineData, stationData, 
 			let candidateFeatures = newMap.getFeaturesAtPixel(e.pixel);
 			let tramCandidate = candidateFeatures.find(f => f.getProperties().type === "tram")
 			let stationCandidate = candidateFeatures.find(f => f.getProperties().type === "station")
-			let lineCandidate = candidateFeatures.find(f => f.getProperties().type === "line")
+			let lineCandidate = undefined// candidateFeatures.find(f => f.getProperties().type === "line")
 
 			// TODO: in case this is a tram, update overlayPosition constantly
 			//		 in case it is a line, always use e.coordinate
 
 			let selectedFeature = tramCandidate || stationCandidate || lineCandidate
 
-			onClick(selectedFeature);
+			onClick(selectedFeature, geolocation);
 			overlayLayer.setPosition(selectedFeature?.getProperties()?.geometry?.flatCoordinates || e.coordinate)
 		});
 

@@ -124,52 +124,83 @@ export function getTramLocation(tram: Tram, lines: Line[]) {
 
 // STYLES
 
-export const tramStyle = (filter, focus) => (feature: Feature) => new Style({
-	image: new Circle({
-		radius: 8,
-		fill: new Fill({
+export const tramStyle = (filter, focus) => (feature: Feature) => [
+	new Style({
+		image: new Circle({
+			radius: 8,
+			fill: new Fill({
+				color: feature.get("color"),
+			}),
+			stroke: new Stroke({
+				width: 3,
+				color: getComputedStyle(document.documentElement).getPropertyValue('--BG2')
+			})
+		}),
+	}),
+	new Style({
+		image: new Circle({
+			radius: 20,
+			fill: new Fill({
+				color: "transparent"
+			}),
+		})
+	}),
+]
+
+export const stationStyle = (filter, focus) => (feature: Feature) => [
+	new Style({
+		image: new Circle({
+			radius: 5,
+			fill: new Fill({
+				color: getComputedStyle(document.documentElement).getPropertyValue('--BG2')
+			}),
+			stroke: new Stroke({
+				width: 3,
+				color: getComputedStyle(document.documentElement).getPropertyValue('--FG2')
+			})
+		})
+	}),
+	new Style({
+		image: new Circle({
+			radius: 20,
+			fill: new Fill({
+				color: "transparent"
+			}),
+		})
+	}),
+]
+
+export const lineStyle = (filter, focus) => (feature: Feature) => [
+	new Style({
+		stroke: new Stroke({
+			width: 3,
 			color: feature.get("color"),
 		}),
-		stroke: new Stroke({
-			width: 3,
-			color: getComputedStyle(document.documentElement).getPropertyValue('--BG2')
-		})
 	}),
-})
-
-export const stationStyle = (filter, focus) => (feature: Feature) => new Style({
-	image: new Circle({
-		radius: 5,
-		fill: new Fill({
-			color: getComputedStyle(document.documentElement).getPropertyValue('--BG2')
+	new Style({
+		stroke: new Stroke({
+			width: 10,
+			color: "transparent",
 		}),
-		stroke: new Stroke({
-			width: 3,
-			color: getComputedStyle(document.documentElement).getPropertyValue('--FG2')
-		})
-	})
-})
-
-export const lineStyle = (filter, focus) => (feature: Feature) => new Style({
-	stroke: new Stroke({
-		width: 3,
-		color: feature.get("color"),
 	}),
-})
+]
 
 
-export const locationStyle = (filter, focus) => (feature: Feature) => [new Style({
-	image: new Circle({
-		radius: 6.5,
-		fill: new Fill({
-			color: "rgba(45,110,133,1)",
+export const locationStyle = (filter, focus) => (feature: Feature) => [
+	new Style({
+		image: new Circle({
+			radius: 6.5,
+			fill: new Fill({
+				color: "rgba(45,110,133,1)",
+			})
+		})
+	}),
+	new Style({
+		image: new Circle({
+			radius: 9.5,
+			fill: new Fill({
+				color: "rgba(45,110,133,0.3)",
+			})
 		})
 	})
-}), new Style({
-	image: new Circle({
-		radius: 9.5,
-		fill: new Fill({
-			color: "rgba(45,110,133,0.3)",
-		})
-	})
-})]
+]

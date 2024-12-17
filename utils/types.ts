@@ -167,3 +167,9 @@ export type HistStop = {
 	departure: number;
 	departure_actual: number;
 }
+
+declare module "react" {
+	interface CSSProperties {
+		[key: `--${string}`]: string | number;
+	}
+}

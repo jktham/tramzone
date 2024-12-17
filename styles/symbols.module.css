@@ -1,15 +1,83 @@
 .lineSymbol {
-	height: 1.7rem;
-	width: 1.7rem;
+	height: 1.75rem;
+	width: 1.75rem;
 	border-radius: 0.35rem;
 	display: flex;
 	justify-content: center;
 	align-items: center;
 
-	color: white;
+	color: var(--FW1);
 	font-family: "JetBrains Mono", monospace;
 	font-size: 1rem;
 	font-style: normal;
 	font-weight: 700;
 	line-height: normal;
+}
+
+.stationSymbol {
+	height: 1.75rem;
+	width: 1.75rem;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	flex-direction: column;
+	padding: 3px;
+}
+
+.stationSymbol line {
+	width: 3px;
+	height: 100%;
+	background: var(--FG1);
+	flex-shrink: 1;
+	margin: 0 0 -1px;
+}
+
+.stationSymbol line:last-child {
+	margin: -1px 0 0;
+}
+
+.stationSymbol circle {
+	width: 0.65rem;
+	height: 0.65rem;
+	flex-shrink: 0;
+	border-radius: 100%;
+	border: 3px solid var(--FG1);
+}
+
+.tag, .tag.auto {
+	display: flex;
+	height: 1.25rem;
+	padding: 0 0.5rem;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+	flex-shrink: 0;
+
+	border-radius: 0.35rem;
+	color: var(--FG1);
+	background: var(--fill, var(--BG2));
+	outline: var(--stroke, unset) solid 3px;
+
+	font-family: "JetBrains Mono", monospace;
+	font-size: 0.6rem;
+	font-style: normal;
+	font-weight: 700;
+	line-height: normal;
+	text-align: center;
+	vertical-align: top;
+}
+
+.tag.inverse {
+	color: var(--FG4);
+	background: var(--fill, var(--BG3));
+}
+
+.tag.white {
+	color: var(--FW1);
+	background: var(--fill, var(--BB2));
+}
+
+.tag.black {
+	color: var(--FB1);
+	background: var(--fill, var(--BW2));
 }
