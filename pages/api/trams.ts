@@ -252,11 +252,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 			return s;
 		});
 
-        let prev_stop = t.stops.find((s) => s.stop_sequence == Math.floor(t.progress));
-        let next_stop = t.stops.find((s) => s.stop_sequence == Math.floor(t.progress + 1));
-		if (next_stop) {
-			t.delay = next_stop.departure_delay;
-		}
 		if (time >= t.stops[0].pred_arrival && time <= t.stops[t.stops.length-1].pred_departure) {
 			t.active = true;
 		}
@@ -265,6 +260,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 	});
 
 	updateTramProgress(trams, time);
+
+	trams = trams.map((t) => {
+        let prev_stop = t.stops.find((s) => s.stop_sequence == Math.floor(t.progress));
+        let next_stop = t.stops.find((s) => s.stop_sequence == Math.floor(t.progress + 1));
+		if (next_stop) {
+			t.delay = next_stop.arrival_delay;
+		} else if (prev_stop) {
+			t.delay = prev_stop.departure_delay;
+		}
+		return t;
+	});
+
 
 	if (query.active) {
 		trams = trams.filter((t) => t.active);
