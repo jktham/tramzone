@@ -11,138 +11,173 @@ import VectorSource from "ol/source/Vector";
 import GeoJSON from "ol/format/GeoJSON";
 import Style from "ol/style/Style.js";
 import {Circle, Fill, Stroke} from "ol/style.js";
-import {getInterpolatedTramData, getLineData, getStationData, getTramData, updateTramProgress} from "../utils/dataUtils";
+import {getLineData, getStationData, getTramData, updateTramProgress, updateTramProgressInterpolated} from "../utils/dataUtils";
 import Overlay from "ol/Overlay";
 import styles from "../styles/tramMap.module.css";
-import { Line, Station, Tram } from "../utils/types";
-import { Feature, Geolocation } from "ol";
-import { Point } from "ol/geom";
-import { Coordinate } from "ol/coordinate";
+import {Line, Station, Tram} from "../utils/types";
+import {Feature, Geolocation} from "ol";
+import {Point} from "ol/geom";
+import {Coordinate} from "ol/coordinate";
+import {Attribution} from "ol/control";
+import {useTheme} from "next-themes";
+import {lineStyle, locationStyle, stationStyle, tramStyle} from "../utils/mapUtils";
+
+// todo: integrate these somehow
+export const timeOffset = 86400000 * -0;
+export const histDate = ""; // ex: 2024-12-01 -> set offset to n days ago
 
 // TODO: what is type of target (in onClick) / focus should we even define that?
-export default function TramMap({onClick, focus, filter, lineData, stationData, tramData} : { onClick : (target : any) => void; focus : any; filter : {}; lineData : Line[]; stationData : Station[]; tramData : Tram[]; }) {
-    // STATES AND REFS
-    const [map, setMap] = useState<Map>(null);
-	const [userLocation, setUserLocation] = useState<Coordinate>([0,0]);
+export default function TramMap({onClick, focus, filter, lineData, stationData, tramData, overlay}: { onClick: (target: any, userLocation : Geolocation) => void; focus: any; filter: {}; lineData: Line[]; stationData: Station[]; tramData: Tram[]; overlay: any }) {
 
-	/*const [currTramData, setCurrTramData] = useState(null); // OTHER METHOD
-	const [prevTramData, setPrevTramData] = useState(null);*/
-	const fps = 60;
+	// STATES AND REFS
 
-    const overlayRef = useRef(null);
+	const {theme, setTheme} = useTheme();
 
-    // SET UP THE MAP
+	const [map, setMap] = useState<Map>(null);
+	const [stadiaLayer, setStadiaLayer] = useState<TileLayer>();
+	const [lineLayer, setLineLayer] = useState<VectorLayer>();
+	const [stationLayer, setStationLayer] = useState<VectorLayer>();
+	const [tramLayer, setTramLayer] = useState<VectorLayer>();
+	const [userLocationLayer, setUserLocationLayer] = useState<VectorLayer>();
+	const [overlayLayer, setOverlayLayer] = useState<Overlay>();
+
+	const [userLocation, setUserLocation] = useState<Coordinate>([0, 0]);
+	const [prevTramData, setPrevTramData] = useState<Tram[]>();
+
+	const fps = 10;
+
+	const overlayRef = useRef(null);
+
+	// start view
 	const view = new View({
 		center: OlProj.fromLonLat([8.5417, 47.3769]),
 		zoom: 15,
 	});
 
 	// Get the users live location
-	var geolocation = new Geolocation({
+	let geolocation = new Geolocation({
 		tracking: true,
 		projection: view.getProjection()
-	  });
-	
-	const stadiaLayer = new TileLayer({
-		source: new StadiaMaps({
-			layer: "alidade_smooth",
-			retina: true,
-		}),
 	});
 
-	const osmLayer = new TileLayer({
-		source: new OSM(),
-	});
+	// INITIALIZE MAP
 
-	const lineLayer = new VectorLayer({
-		className: "lines",
-		visible: true,
-		source: new VectorSource({
-			features: new GeoJSON().readFeatures(getLineData(lineData), {
-				featureProjection: view.getProjection(),
-			}),
-		}),
-		style: (feature) =>
-			new Style({
-				stroke: new Stroke({
-					width: 3,
-					color: feature.get("color"),
-				}),
-			}),
-	});
-
-	const stationLayer = new VectorLayer({
-		className: "stations",
-		visible: true,
-		source: new VectorSource({
-			features: new GeoJSON().readFeatures(getStationData(stationData), {
-				featureProjection: view.getProjection(),
-			}),
-		}),
-		style: new Style({
-			image: new Circle({
-				radius: 5,
-				fill: new Fill({
-					color: "#F2F3F0",
-				}),
-				stroke: new Stroke({
-					width: 3,
-					color: "#000000"
-				})
-			}),
-		}),
-	});
-
-	const tramLayer = new VectorLayer({
-		className: "trams",
-		visible: true,
-		source: new VectorSource({
-			features: new GeoJSON().readFeatures(getTramData(tramData, lineData), {
-				featureProjection: view.getProjection(),
-			})
-		}),
-		style: (feature) =>
-			new Style({
-				image: new Circle({
-					radius: 8,
-					fill: new Fill({
-						color: feature.get("color"),	
-					}),
-					stroke: new Stroke({
-						width: 3,
-						color: "#F2F3F0"
-					})
-				}),
-			}),
-	});
-
-	const userLocationLayer = new VectorLayer({
-		className: "userLoc",
-		visible: true,
-		source: new VectorSource({
-			features: [new Feature({
-				geometry: new Point(userLocation),
-				type: "userLoc",
-			})]
-		}),
-		style: new Style({
-			image: new Circle({
-				radius: 10,
-				fill: new Fill({
-					color: "#000000",
-				}),
-				stroke: new Stroke({
-					width: 3,
-					color: "#000000"
-				})
-			}),
-		}),
-		
-	});
-
-	// Add the current live position of the user to the map
+	// layers
 	useEffect(() => {
-		map?.getAllLayers().find((v) => v.getClassName().startsWith("userLoc"))?.setSource(new VectorSource({
+
+		setStadiaLayer(new TileLayer({
+			className: "base",
+			source: new StadiaMaps({
+				layer: theme === "light" ? "alidade_smooth" : "alidade_smooth_dark",
+				retina: true,
+			}),
+		}))
+
+		setLineLayer(new VectorLayer({
+			className: "lines",
+			visible: true,
+			source: new VectorSource({
+				features: new GeoJSON().readFeatures(getLineData(lineData), {
+					featureProjection: view.getProjection(),
+				}),
+			}),
+			style: lineStyle(filter, focus)
+		}))
+
+		setStationLayer(new VectorLayer({
+			className: "stations",
+			visible: true,
+			source: new VectorSource({
+				features: new GeoJSON().readFeatures(getStationData(stationData), {
+					featureProjection: view.getProjection(),
+				}),
+			}),
+			style: stationStyle(filter, focus)
+		}))
+
+		setTramLayer(new VectorLayer({
+			className: "trams",
+			visible: true,
+			source: new VectorSource({
+				features: new GeoJSON().readFeatures(getTramData(tramData, lineData), {
+					featureProjection: view.getProjection(),
+				})
+			}),
+			style: tramStyle(filter, focus)
+		}))
+
+		setUserLocationLayer(new VectorLayer({
+			className: "userLoc",
+			visible: true,
+			source: new VectorSource({
+				features: [new Feature({
+					geometry: new Point(userLocation)
+				})]
+			}),
+			style: locationStyle(filter, focus)
+		}))
+
+		setOverlayLayer(new Overlay({
+			element: overlayRef.current
+		}))
+
+	}, [])
+
+	// map
+	useEffect(() => {
+
+		if (!(stadiaLayer && lineLayer && stationLayer && tramLayer && userLocationLayer && overlayLayer)) return;
+
+		const newMap = new Map({
+			target: "map",
+			view: view,
+			layers: [stadiaLayer, lineLayer, stationLayer, tramLayer, userLocationLayer],
+			controls: [new Attribution({
+				className: styles.attribution,
+				collapsible: false,
+				collapsed: false,
+				collapseLabel: ""
+			})]
+		});
+
+		newMap.addOverlay(overlayLayer)
+
+		newMap.on("click", function (e) {
+
+			let candidateFeatures = newMap.getFeaturesAtPixel(e.pixel);
+			let tramCandidate = candidateFeatures.find(f => f.getProperties().type === "tram")
+			let stationCandidate = candidateFeatures.find(f => f.getProperties().type === "station")
+			let lineCandidate = undefined// candidateFeatures.find(f => f.getProperties().type === "line")
+
+			// TODO: in case this is a tram, update overlayPosition constantly
+			//		 in case it is a line, always use e.coordinate
+
+			let selectedFeature = tramCandidate || stationCandidate || lineCandidate
+
+			onClick(selectedFeature, geolocation);
+			overlayLayer.setPosition(selectedFeature?.getProperties()?.geometry?.flatCoordinates || e.coordinate)
+		});
+
+		geolocation.on("change", function (e) {
+			var loc = geolocation.getPosition();
+			setUserLocation(loc);
+		})
+
+		if (map) console.warn("Map re-rendered")
+
+		setMap(newMap)
+
+		return () => {
+			newMap.setTarget(null);
+			setMap(null);
+		};
+	}, [stadiaLayer, lineLayer, stationLayer, tramLayer, userLocationLayer, overlayLayer]);
+
+	// UPDATES
+
+	// location
+	useEffect(() => {
+		userLocationLayer?.setSource(new VectorSource({
 			features: [new Feature({
 				geometry: new Point(userLocation),
 				type: "userLoc"
@@ -150,108 +185,37 @@ export default function TramMap({onClick, focus, filter, lineData, stationData, 
 		}))
 	}, [userLocation]);
 
-	/*
-			map?.getAllLayers().find((v) => v.getClassName().startsWith("trams"))?.setSource(new VectorSource({
-			features: new GeoJSON().readFeatures(getTramData(tramData, lineData), {
-				featureProjection: view.getProjection(),
-			})
-		}))
-	 */
-
+	// theme
 	useEffect(() => {
-		//Implementing the setInterval method
-		const interval = setInterval(() => {
+		stadiaLayer?.setSource(new StadiaMaps({
+			layer: theme === "light" ? "alidade_smooth" : "alidade_smooth_dark",
+			retina: true,
+		}))
+		lineLayer?.setStyle(lineStyle(filter, focus))
+		stationLayer?.setStyle(stationStyle(filter, focus))
+		tramLayer?.setStyle(tramStyle(filter, focus))
+	}, [theme]);
 
-			// OTHER METHOD
-			/*map?.getAllLayers().find((v) => v.getClassName().startsWith("trams"))?.setSource(new VectorSource({
-				features: new GeoJSON().readFeatures(getInterpolatedTramData(prevTramData, currTramData, lineData), {
-					featureProjection: view.getProjection(),
-				})
-			}))*/
-			map?.getAllLayers().find((v) => v.getClassName().startsWith("trams"))?.setSource(new VectorSource({
-				features: new GeoJSON().readFeatures(getTramData(updateTramProgress(tramData, (new Date()).valueOf()), lineData), {
+	// tram position
+	useEffect(() => {
+		const interval = setInterval(() => {
+			let newTramData = updateTramProgressInterpolated(tramData, prevTramData, new Date().getTime() + timeOffset);
+			tramLayer?.setSource(new VectorSource({
+				features: new GeoJSON().readFeatures(getTramData(newTramData, lineData), {
 					featureProjection: view.getProjection(),
 				})
 			}))
+			setPrevTramData(JSON.parse(JSON.stringify(newTramData)));
 		}, 1000 / fps);
-
-		//Clearing the interval
-		return () => clearInterval(interval);
-	}, [tramData]);
-
-	// OTHER METHOD
-	/*useEffect(() => {
-		setPrevTramData(currTramData)
-		setCurrTramData(tramData)
-	}, [tramData]);*/
-
-	useEffect(() => {
-		const map = new Map({
-			target: "map",
-			layers: [osmLayer, lineLayer, stationLayer, tramLayer, userLocationLayer],
-		});
-
-		map.setView(
-			new View({
-				center: OlProj.fromLonLat([8.5417, 47.3769]),
-				zoom: 15,
-			})
-		);
-
-
-        const overlayLayer = new Overlay({
-            element:overlayRef.current
-          });
-        map.addOverlay(overlayLayer);
-
-		map.on("click", function (e) {
-			let selectedFeature;
-            let hasTramFeatures = map.hasFeatureAtPixel(e.pixel, {layerFilter: function(layerCandidate) {
-                return layerCandidate.getClassName() === "trams";
-            }});
-            let hasStationFeatures = map.hasFeatureAtPixel(e.pixel, {layerFilter: function(layerCandidate) {
-                return layerCandidate.getClassName() === "stations";
-            }});
-            let hasLineFeatures = map.hasFeatureAtPixel(e.pixel, {layerFilter: function(layerCandidate) {
-                return layerCandidate.getClassName() === "lines";
-            }});
-
-			map.forEachFeatureAtPixel(e.pixel, function (feature, layer) {
-                let layerClassName = layer.getClassName();
-                if (selectedFeature) {}
-                else {
-                if (!hasTramFeatures && !hasStationFeatures) {selectedFeature = feature;}
-                else if (!hasTramFeatures) {
-                    if (layerClassName === "stations") {selectedFeature = feature;}
-                }
-                else if (hasLineFeatures) {
-                    if (layerClassName === "trams") selectedFeature = feature;
-                }
-                }
-                let clickedCoords = e.coordinate;
-                overlayLayer.setPosition(clickedCoords);
-				// console.log(clickedCoords);
-            });
-			onClick(selectedFeature);
-		});
-
-		geolocation.on("change", function (e) {
-			var loc = geolocation.getPosition();
-			// console.log(loc);
-			setUserLocation(loc);
-		})
-
-		setMap(map)
-
 		return () => {
-			map.setTarget(null);
-			setMap(null);
+			clearInterval(interval)
 		};
-	}, []);
+	}, [tramData, prevTramData]);
 
 	return (
 		<>
-			<div className={styles.map} id="map" />
+			<div ref={overlayRef}>{overlay}</div>
+			<div className={styles.map} id="map"/>
 		</>
 	);
 }

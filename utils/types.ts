@@ -81,21 +81,20 @@ export type ServiceException = {
 	type: number; // 1: added; 2: deleted
 }
 
-export enum TripStatus { // https://gtfs.org/documentation/realtime/reference/#enum-schedulerelationship_1
-	Scheduled = "scheduled",
-	Added = "added",
-	Unscheduled = "unscheduled",
-	Canceled = "canceled",
-	Duplicated = "duplicated",
-	Deleted = "deleted",
-}
+export type TripStatus = // https://gtfs.org/documentation/realtime/reference/#enum-schedulerelationship_1
+	| "scheduled"
+	| "added"
+	| "unscheduled"
+	| "canceled"
+	| "duplicated"
+	| "deleted"
 
-export enum StopStatus { // https://gtfs.org/documentation/realtime/reference/#enum-schedulerelationship
-	Scheduled = "scheduled",
-	Skipped = "skipped",
-	No_Data = "no_data",
-	Unscheduled = "unscheduled",
-}
+
+export type StopStatus = // https://gtfs.org/documentation/realtime/reference/#enum-schedulerelationship
+	| "scheduled"
+	| "skipped"
+	| "no_data"
+	| "unscheduled"
 
 export type TripUpdate = {
 	trip_id: string;
@@ -152,4 +151,25 @@ export type ServiceAlert = {
 	effect: string;
 	header: string;
 	description: string;
+}
+
+export type HistStop = {
+	trip_id: string;
+	route_id: string;
+	route_name: string;
+	trip_name: string;
+	added: boolean;
+	canceled: boolean;
+	stop_id: string;
+	stop_name: string;
+	arrival: number;
+	arrival_actual: number;
+	departure: number;
+	departure_actual: number;
+}
+
+declare module "react" {
+	interface CSSProperties {
+		[key: `--${string}`]: string | number;
+	}
 }

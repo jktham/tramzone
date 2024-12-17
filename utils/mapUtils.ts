@@ -1,4 +1,7 @@
-import { Tram, Line } from "./types";
+import {Tram, Line} from "./types";
+import Style from "ol/style/Style";
+import {Circle, Fill, Stroke} from "ol/style";
+import {Feature} from "ol";
 
 export function grayscaleLayer(context) {
 	let canvas = context.canvas;
@@ -80,10 +83,10 @@ export function getTramLocation(tram: Tram, lines: Line[]) {
 
 	let total_length = 0;
 	let subsegments = [];
-	for (let i=0; i<current_segment.geometry.coordinates.length - 1; i++) {
+	for (let i = 0; i < current_segment.geometry.coordinates.length - 1; i++) {
 		let a = current_segment.geometry.coordinates[i];
-		let b = current_segment.geometry.coordinates[i+1];
-		let l = Math.sqrt((a[0]-b[0])**2 + (a[1]-b[1])**2);
+		let b = current_segment.geometry.coordinates[i + 1];
+		let l = Math.sqrt((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2);
 
 		subsegments.push({
 			a: a,
@@ -105,10 +108,10 @@ export function getTramLocation(tram: Tram, lines: Line[]) {
 		if (p >= s.p_start && p < s.p_end) {
 			let p_dist = p - s.p_start;
 			let p_scaled = p_dist / (s.p_end - s.p_start);
-			
+
 			let coords = [
-				s.a[0] * (1-p_scaled) + s.b[0] * p_scaled,
-				s.a[1] * (1-p_scaled) + s.b[1] * p_scaled,
+				s.a[0] * (1 - p_scaled) + s.b[0] * p_scaled,
+				s.a[1] * (1 - p_scaled) + s.b[1] * p_scaled,
 			];
 			return coords;
 		}
@@ -118,3 +121,86 @@ export function getTramLocation(tram: Tram, lines: Line[]) {
 	let try_prev = segments.find((s) => s.from == prev_stop?.stop_diva)?.geometry.coordinates[0];
 	return try_prev || [0, 0];
 }
+
+// STYLES
+
+export const tramStyle = (filter, focus) => (feature: Feature) => [
+	new Style({
+		image: new Circle({
+			radius: 8,
+			fill: new Fill({
+				color: feature.get("color"),
+			}),
+			stroke: new Stroke({
+				width: 3,
+				color: getComputedStyle(document.documentElement).getPropertyValue('--BG2')
+			})
+		}),
+	}),
+	new Style({
+		image: new Circle({
+			radius: 20,
+			fill: new Fill({
+				color: "transparent"
+			}),
+		})
+	}),
+]
+
+export const stationStyle = (filter, focus) => (feature: Feature) => [
+	new Style({
+		image: new Circle({
+			radius: 5,
+			fill: new Fill({
+				color: getComputedStyle(document.documentElement).getPropertyValue('--BG2')
+			}),
+			stroke: new Stroke({
+				width: 3,
+				color: getComputedStyle(document.documentElement).getPropertyValue('--FG2')
+			})
+		})
+	}),
+	new Style({
+		image: new Circle({
+			radius: 20,
+			fill: new Fill({
+				color: "transparent"
+			}),
+		})
+	}),
+]
+
+export const lineStyle = (filter, focus) => (feature: Feature) => [
+	new Style({
+		stroke: new Stroke({
+			width: 3,
+			color: feature.get("color"),
+		}),
+	}),
+	new Style({
+		stroke: new Stroke({
+			width: 10,
+			color: "transparent",
+		}),
+	}),
+]
+
+
+export const locationStyle = (filter, focus) => (feature: Feature) => [
+	new Style({
+		image: new Circle({
+			radius: 6.5,
+			fill: new Fill({
+				color: "rgba(45,110,133,1)",
+			})
+		})
+	}),
+	new Style({
+		image: new Circle({
+			radius: 9.5,
+			fill: new Fill({
+				color: "rgba(45,110,133,0.3)",
+			})
+		})
+	})
+]

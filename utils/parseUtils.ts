@@ -5,12 +5,12 @@ let shapefile = require("shapefile");
 import csv from "csv-parser";
 import readline from "node:readline";
 import { convertLV95toWGS84 } from "./mapUtils";
-import { Route, Trip, StopTime, Service, ServiceException, Station, Line, Segment, TramTrip } from "./types";
+import { Route, Trip, StopTime, Service, ServiceException, Station, Line, Segment, TramTrip, Tram, TripStatus, StopStatus, HistStop } from "./types";
 let AsyncLock = require("async-lock");
 import { parser } from 'stream-json';
 import { streamArray } from 'stream-json/streamers/StreamArray';
 
-function getUpdateDate() {
+async function getUpdateDate() {
 	// new gtfs data every monday and thursday (static at 10:00, rt at 15:00)
 	let updateTime = new Date();
 	updateTime.setHours(15, 0, 0, 0);
@@ -29,13 +29,24 @@ function getUpdateDate() {
 
 	let date = new Date(Math.max(monday.getTime(), thursday.getTime()));
 	let dateString = `${date.getFullYear()}-${("0" + (date.getMonth()+1)).slice(-2)}-${("0" + date.getDate()).slice(-2)}`;
-	return dateString;
+
+	try {
+		let check = await fetch(`https://opentransportdata.swiss/de/dataset/timetable-2024-gtfs2020/resource_permalink/gtfs_fp2024_${date}.zip`, {method: "HEAD"});
+		if (check.ok) {
+			return dateString
+		}
+	} catch {
+		
+	}
+
+	console.log("new data invalid, fallback to 2024-12-12")
+	return "2024-12-12";
 }
 
 function getTimeFromString(timeString: string) {
-	let h = Number(timeString.split(":")[0]);
-	let m = Number(timeString.split(":")[1]);
-	let s = Number(timeString.split(":")[2]);
+	let h = Number(timeString?.split(":")[0] || "0");
+	let m = Number(timeString?.split(":")[1] || "0");
+	let s = Number(timeString?.split(":")[2] || "0");
 
 	let date = new Date(0);
 	date.setUTCHours(h, m, s, 0); // no idea what timezone this should be
@@ -90,7 +101,7 @@ async function parseStations() {
 async function parseLines() {
 	console.log("parsing dataset lines");
 
-	let lineColors = JSON.parse((await fs.readFile(`data/datasets/lineColors.json`)).toString());
+	let lineColors = JSON.parse(await fs.readFile(`data/datasets/lineColors.json`, "utf-8"));
 	let geojson = await shapefile.read("data/datasets/lines.shp", "data/datasets/lines.dbf");
 
 	let lines: Line[] = [];
@@ -121,7 +132,20 @@ async function parseLines() {
 			}
 		}
 	}
+
 	lines.find((l) => l.name == "10").start = "Zürich, Bahnhofplatz/HB";
+	let lineSegmentOverrides = JSON.parse(await fs.readFile(`data/datasets/lineSegments.json`, "utf-8"));
+
+	for (let segmentOverride of lineSegmentOverrides) {
+		let lineSegments = lines.find((l) => l.name == segmentOverride.name).segments;
+		let found = lineSegments.find((s) => s.from == segmentOverride.segment.from && s.to == segmentOverride.segment.to);
+		if (found) {
+			lineSegments[lineSegments.indexOf(found)] = segmentOverride.segment;
+		} else {
+			lineSegments.push(segmentOverride.segment);
+		}
+	}
+
 	lines.sort((a, b) => Number(a.name) - Number(b.name));
 	for (let line of lines) {
 		line.segments.sort((a, b) => a.sequence - b.sequence);
@@ -145,6 +169,11 @@ async function parseLines() {
 async function getGtfs(date: string) {
 	// get static data
 	if (!(await fs.readdir("data/gtfs/")).includes(`${date}`)) {
+		let old = await fs.readdir("data/gtfs/");
+		for (let f of old) {
+			await fs.rm(`data/gtfs/${f}`, {recursive: true, force: true});
+		}
+
 		console.log("getting new gtfs data: ", date);
 		let gtfs_static = await fetch(`https://opentransportdata.swiss/de/dataset/timetable-2024-gtfs2020/resource_permalink/gtfs_fp2024_${date}.zip`);
 		// @ts-ignore: dumb error
@@ -153,7 +182,7 @@ async function getGtfs(date: string) {
 		await fs.writeFile(`data/gtfs/${date}.zip`, str);
 		console.log("unzipping");
 		await createReadStream(`data/gtfs/${date}.zip`).pipe(unzipper.Extract({path: `data/gtfs/${date}`})).promise();
-		await fs.unlink(`data/gtfs/${date}.zip`);
+		await fs.rm(`data/gtfs/${date}.zip`);
 		console.log("done");
 	} else {
 		console.log("using old gtfs data: ", date);
@@ -546,7 +575,7 @@ let lock = new AsyncLock();
 export async function parseData(force: boolean) {
 	// console.log("acquiring parse lock")
 	await lock.acquire("parseKey", async () => { // prevent interleaved parsing caused by simultaneous api calls
-		if (force || !existsSync("data/parsed/lastUpdate.json") || (await fs.readFile("data/parsed/lastUpdate.json", "utf-8")) != JSON.stringify({date: getUpdateDate(), version: version})) {
+		if (force || !existsSync("data/parsed/lastUpdate.json") || (await fs.readFile("data/parsed/lastUpdate.json", "utf-8")) != JSON.stringify({date: await getUpdateDate(), version: version})) {
 			console.log("parsing data");
 	
 			if (!existsSync("data/gtfs/")) {
@@ -556,7 +585,7 @@ export async function parseData(force: boolean) {
 				await fs.mkdir("data/parsed/");
 			}
 		
-			let date = getUpdateDate();
+			let date = await getUpdateDate();
 			
 			await parseLines();
 			await parseStations();
@@ -573,7 +602,7 @@ export async function parseData(force: boolean) {
 			await mapStopTimes();
 			await generateTramTrips();
 		
-			await fs.writeFile(`data/parsed/lastUpdate.json`, JSON.stringify({date: getUpdateDate(), version: version}));
+			await fs.writeFile(`data/parsed/lastUpdate.json`, JSON.stringify({date: await getUpdateDate(), version: version}));
 		
 			console.log("done");
 		}
@@ -581,3 +610,137 @@ export async function parseData(force: boolean) {
 	// console.log("releasing parse lock")
 }
 
+
+function getDateTimeFromStringHist(dateTimeString: string) {
+	if (!dateTimeString || dateTimeString == "") {
+		return 0;
+	}
+	let dateString = dateTimeString?.split(" ")[0];
+	let timeString = dateTimeString?.split(" ")[1];
+
+	let y = Number(dateString?.slice(6, 10));
+	let M = Number(dateString?.slice(3, 5));
+	let d = Number(dateString?.slice(0, 2));
+
+	let h = Number(timeString?.split(":")[0] || "0");
+	let m = Number(timeString?.split(":")[1] || "0");
+	let s = Number(timeString?.split(":")[2] || "0");
+
+	let date = new Date(0);
+	date.setUTCFullYear(y, M-1, d);
+	date.setUTCHours(h, m, s, 0); // no idea what timezone this should be
+	return date.getTime();
+}
+
+export async function getHist(date: string) {
+	console.log("getting historical data: ", date);
+	let hist = await fetch(`https://opentransportdata.swiss/en/dataset/istdaten/resource_permalink/${date}_istdaten.csv`);
+	// @ts-ignore: dumb error
+	let str = stream.Readable.fromWeb(hist.body);
+	await fs.writeFile(`data/hist/${date}.csv`, str);
+	console.log("done");
+}
+
+export async function parseHist(date: string) {
+	console.log("parsing historical data: ", date);
+
+	let histStops = [];
+	let first = true;
+	await new Promise<void>((resolve) => {
+		let rd = readline.createInterface({
+			input: createReadStream(`data/hist/${date}.csv`),
+			terminal: false,
+		});
+
+		rd.on("line", function (line) {
+			if (first) {
+				first = false;
+				return;
+			}
+
+			let row = line.split(";");
+			if (row[5] == "Tram" && row[2] == "85:3849") {
+				let histStop: HistStop = {
+					trip_id: row[1],
+					route_id: row[6].trim(),
+					route_name: row[7],
+					trip_name: row[8],
+					added: row[10] == "true",
+					canceled: row[11] == "true",
+					stop_id: row[12],
+					stop_name: row[13],
+					arrival: getDateTimeFromStringHist(row[14]),
+					arrival_actual: getDateTimeFromStringHist(row[15]),
+					departure: getDateTimeFromStringHist(row[17]),
+					departure_actual: getDateTimeFromStringHist(row[18]),
+				}
+				histStops.push(histStop);
+			}
+		});
+
+		rd.on("close", function () {
+			resolve();
+		});
+	});
+
+	let histStopsMap: Map<string, HistStop[]> = new Map();
+	histStops.map((s) => {
+		if (histStopsMap.has(s.trip_id)) {
+			histStopsMap.set(s.trip_id, [s, ...histStopsMap.get(s.trip_id)]);
+		} else {
+			histStopsMap.set(s.trip_id, [s]);
+		}
+	});
+
+	let stations: Station[] = JSON.parse(await fs.readFile("data/parsed/stations.json", "utf-8"));
+	let stationsMap: Map<string, Station> = new Map();
+	stations.map((s) => {
+		stationsMap.set(s.id.toString(), s);
+	});
+
+	let trams = [];
+	histStopsMap.forEach((v, k) => {
+		let tram: Tram = {
+			trip_id: v[0].trip_id,
+			trip_name: v[0].trip_name,
+			trip_status: "scheduled",
+			headsign: "",
+			direction: 0,
+			route_id: v[0].route_id,
+			route_name: v[0].route_name,
+			service_id: "",
+			service_days: [],
+			progress: 0,
+			delay: 0,
+			active: false,
+			stops: v.map((s) => {
+				let station = stationsMap.get(s.stop_id);
+				return {
+					stop_id: s.stop_id,
+					stop_diva: station?.diva || 0,
+					stop_name: station?.name || s.stop_name,
+					stop_sequence: 0,
+					stop_status: "scheduled",
+					arrival: s.arrival,
+					departure: s.departure,
+					arrival_delay: (s.arrival_actual - s.arrival) / 1000,
+					departure_delay: (s.departure_actual - s.departure) / 1000,
+					pred_arrival: s.arrival_actual || s.departure_actual,
+					pred_departure: s.departure_actual || s.arrival_actual,
+					arrived: false,
+					departed: false,
+				};
+			}),
+		};
+		tram.stops.sort((a, b) => a.arrival - b.arrival);
+		for (let i = 0; i < tram.stops.length; i++) {
+			tram.stops[i].stop_sequence = i+1;
+		}
+
+		trams.push(tram);
+	});
+
+	await fs.writeFile(`data/hist/${date}.json`, JSON.stringify(trams));
+
+	console.log("done");
+}

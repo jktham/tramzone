@@ -16,6 +16,9 @@ type QueryParams = {
 
 type ResponseData = Tram[] | string;
 
+const updateCount = 10; // number of past updates to average
+let updateIndex = 0;
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse<ResponseData>) {
 	await parseData(false)
 
@@ -38,9 +41,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 	let time = query.time || new Date().getTime();
 	time += query.timeOffset;
 
+	// todo: aaaaa night trams only work until 1 hour past midnight??????
 	let today = new Date(time);
 	today.setUTCHours(-1, 0, 0, 0); // midnight CET
-	let weekday = (today.getUTCDay() + 1 + 6) % 7; // mon=0
+	let todayLocal = new Date(time + 3600000);
+	let weekday = (todayLocal.getUTCDay() + 6) % 7; // mon=0
 
 	let tramTrips: TramTrip[] = JSON.parse(await fs.readFile(`data/parsed/tramTrips${weekday}.json`, "utf-8"));
 	let services: Service[] = JSON.parse(await fs.readFile(`data/parsed/services.json`, "utf-8"));
@@ -76,8 +81,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 		for (let s of t.stops) {
 			if (s.arrival >= 86400000 || s.departure >= 86400000) { // only supports next day for now
 				offset = 6;
-				s.arrival = s.arrival % 86400000;
-				s.departure = s.departure % 86400000;
+				// s.arrival = s.arrival % 86400000;
+				// s.departure = s.departure % 86400000;
 			}
 		}
 		if (today.getTime() >= service.start && today.getTime() <= service.end) { // does not consider offset but eh
@@ -108,12 +113,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 			trip_id: t["TripUpdate"]["Trip"]["TripId"],
 			trip_time: t["TripUpdate"]["Trip"]["StartTime"],
 			trip_date: t["TripUpdate"]["Trip"]["StartDate"],
-			trip_status: String(t["TripUpdate"]["Trip"]["ScheduleRelationship"] || "scheduled").toLowerCase() as TripStatus,
+			trip_status: String(t["TripUpdate"]["Trip"]["ScheduleRelationship"] || "scheduled").toLowerCase(),
 			stops: t["TripUpdate"]["StopTimeUpdate"]?.map((u) => {
 				return {
 					stop_id: u["StopId"],
 					stop_sequence: u["StopSequence"],
-					stop_status: String(u["ScheduleRelationship"] || "scheduled").toLowerCase() as StopStatus,
+					stop_status: String(u["ScheduleRelationship"] || "scheduled").toLowerCase(),
 					arrival_delay: u["Arrival"] ? u["Arrival"]["Delay"] : 0,
 					departure_delay: u["Departure"] ? u["Departure"]["Delay"] : 0,
 				};
@@ -124,6 +129,40 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 	tripUpdates.map((u) => {
 		tripUpdatesMap.set(u.trip_id, u);
 	});
+
+	// avg updates
+	let pastUpdates: Map<string, TripUpdate>[] = [];
+	for (let i=0; i<updateCount; i++) {
+		if (existsSync(`data/parsed/pastUpdates${i}.json`)) {
+			let {time, update} = JSON.parse(await fs.readFile(`data/parsed/pastUpdates${i}.json`, "utf-8"))
+			if (new Date().getTime() - time < 20000) { // only valid if less than 20s old
+				pastUpdates.push(new Map(update));
+			}
+		}
+	}
+
+	updateIndex = (updateIndex+1) % updateCount;
+	await fs.writeFile(`data/parsed/pastUpdates${updateIndex}.json`, JSON.stringify({time: new Date().getTime(), update: Array.from(tripUpdatesMap.entries())}));
+
+	tripUpdatesMap.forEach((v, k) => {
+		if (!v.stops) {
+			return;
+		}
+		for (let stop of v.stops) {
+			let count = 1;
+			for (let pastUpdate of pastUpdates) {
+				let found = pastUpdate.get(k)?.stops?.find((s) => s.stop_id == stop.stop_id);
+				if (found) {
+					count++;
+					stop.arrival_delay += found.arrival_delay;
+					stop.departure_delay += found.departure_delay;
+				}
+			}
+			stop.arrival_delay /= count;
+			stop.departure_delay /= count;
+		}
+	});
+
 
 	let stations: Station[] = JSON.parse(await fs.readFile("data/parsed/stations.json", "utf-8"));
 	let stationsMap: Map<number, Station> = new Map();
@@ -136,7 +175,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 		return {
 			trip_id: t.trip_id,
 			trip_name: t.trip_name,
-			trip_status: update?.trip_status || TripStatus.Scheduled,
+			trip_status: update?.trip_status || "scheduled",
 			headsign: t.headsign,
 			direction: t.direction,
 			route_id: t.route_id,
@@ -154,7 +193,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 					stop_diva: station.diva,
 					stop_name: station.name,
 					stop_sequence: s.stop_sequence,
-					stop_status: u?.stop_status || StopStatus.Scheduled,
+					stop_status: u?.stop_status || "scheduled",
 					arrival: today.getTime() + s.arrival,
 					departure: today.getTime() + s.departure,
 					arrival_delay: u?.arrival_delay || 0,
@@ -201,12 +240,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 		// quick fix for scuffed data, todo: handle skipped stops
 		t.stops = t.stops.map((s) => {
 			let ns = t.stops.find((s2) => s2.stop_sequence == s.stop_sequence + 1);
-			if (s.pred_departure <= s.pred_arrival && s.stop_status != StopStatus.Skipped) {
+			if (s.pred_departure <= s.pred_arrival && s.stop_status != "skipped") {
 				// if (s.stop_sequence != 0 && s.stop_sequence != t.stops.length) {
 				// 	s.pred_departure = s.pred_arrival + 1; // add 1 to indicate modified
 				// }
 			}
-			if (ns && s.pred_departure >= ns.pred_arrival && ns.stop_status != StopStatus.Skipped) { // try to interpolate inner stop times from 10% - 90%
+			if (ns && s.pred_departure >= ns.pred_arrival && ns.stop_status != "skipped") { // try to interpolate inner stop times from 10% - 90%
 				s.pred_departure = (s.pred_arrival*9 + ns.pred_departure*1) / 10 + 1;
 				ns.pred_arrival = (s.pred_arrival*1 + ns.pred_departure*9) / 10 + 1;
 			}

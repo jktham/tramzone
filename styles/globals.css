@@ -20,3 +20,40 @@ body,
 	overflow: hidden;
 	user-select: none;
 }
+
+
+:root {
+	--BW1: #DADBD7;
+	--BW2: #F2F3F0;
+	--FW1: #FFFFFF;
+	--FW2: #A9A9A9;
+	--BB1: #252525;
+	--BB2: #333333;
+	--FB1: #000000;
+	--FB2: #606060;
+	--DEL: #D52121;
+	--LOC: #2D6E85;
+}
+
+:root,
+[data-theme="dark"] {
+	--BG1: var(--BB1);
+	--BG2: var(--BB2);
+	--BG3: var(--BW2);
+	--BG4: var(--BW1);
+	--FG1: var(--FW1);
+	--FG2: var(--FW2);
+	--FG3: var(--FB2);
+	--FG4: var(--FB1);
+}
+
+[data-theme="light"] {
+	--BG1: var(--BW1);
+	--BG2: var(--BW2);
+	--BG3: var(--BB2);
+	--BG4: var(--BB1);
+	--FG1: var(--FB1);
+	--FG2: var(--FB2);
+	--FG3: var(--FW2);
+	--FG4: var(--FW1);
+}

@@ -1,0 +1,20 @@
+apiVersion: v2
+version: 1.0.2
+appVersion: 1.0.0
+description: Deploys a course application to the IVIA Kubernetes cluster
+name: ivia-course-fullstack-chart
+home: https://gitlab.inf.ethz.ch/course-fwe2024/helm-chart
+maintainers:
+  - name: Thilo Spinner
+    email: thilo.spinner@inf.ethz.ch
+  - name: Matthias Miller
+    email: matthias.miller@inf.ethz.ch
+  - name: Matthias Gabathuler
+    email: matthias.gabathuler@inf.ethz.ch
+dependencies:
+  - name: ivia-course-microservice-chart
+    version: 1.0.2
+    alias: frontend
+  - name: ivia-course-microservice-chart
+    version: 1.0.2
+    alias: backend

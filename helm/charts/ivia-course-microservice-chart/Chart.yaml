@@ -1,0 +1,12 @@
+apiVersion: v2
+version: 1.0.2
+appVersion: 1.0.0
+description: Deploys a single course application to the IVIA Kubernetes cluster
+name: ivia-course-microservice-chart
+maintainers:
+  - name: Thilo Spinner
+    email: thilo.spinner@inf.ethz.ch
+  - name: Matthias Miller
+    email: matthias.miller@inf.ethz.ch
+  - name: Matthias Gabathuler
+    email: matthias.gabathuler@inf.ethz.ch
