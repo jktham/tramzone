@@ -31,7 +31,7 @@ async function getUpdateDate() {
 	let dateString = `${date.getFullYear()}-${("0" + (date.getMonth()+1)).slice(-2)}-${("0" + date.getDate()).slice(-2)}`;
 
 	try {
-		let check = await fetch(`https://opentransportdata.swiss/de/dataset/timetable-2024-gtfs2020/resource_permalink/gtfs_fp2024_${date}.zip`, {method: "HEAD"});
+		let check = await fetch(`https://opentransportdata.swiss/de/dataset/timetable-2025-gtfs2020/resource_permalink/gtfs_fp2024_${date}.zip`, {method: "HEAD"});
 		if (check.ok) {
 			return dateString
 		}
@@ -175,7 +175,7 @@ async function getGtfs(date: string) {
 		}
 
 		console.log("getting new gtfs data: ", date);
-		let gtfs_static = await fetch(`https://opentransportdata.swiss/de/dataset/timetable-2024-gtfs2020/resource_permalink/gtfs_fp2024_${date}.zip`);
+		let gtfs_static = await fetch(`https://opentransportdata.swiss/de/dataset/timetable-2025-gtfs2020/resource_permalink/gtfs_fp2024_${date}.zip`);
 		// @ts-ignore: dumb error
 		let str = stream.Readable.fromWeb(gtfs_static.body);
 
