@@ -13,7 +13,7 @@ export default function Info({data, userLocation} : {data : any; userLocation : 
 	const isLine = type === "line";
 	const isStation = type === "station";
 
-	const meters = getLength(new LineString([userLocation.getPosition(), data.geometry.flatCoordinates]))
+	const meters = getLength(new LineString([userLocation.getPosition() || [0, 0], data.geometry.flatCoordinates]))
 
 	const title = (isTram ? ("Tram " + data.route_name + " " + data.trip_name) : isStation ? data.name : "Line " + data.name).replaceAll("/", "/\u200B").replaceAll(",", ",\u200D");
 	const distance = meters > 999 ? Math.round(meters/100)/10 + "km" : Math.round(meters) + "m";

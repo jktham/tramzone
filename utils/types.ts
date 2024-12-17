@@ -168,6 +168,12 @@ export type HistStop = {
 	departure_actual: number;
 }
 
+export type Disruption = {
+	tram: Tram;
+	stop: Stop | undefined;
+	message: string;
+}
+
 declare module "react" {
 	interface CSSProperties {
 		[key: `--${string}`]: string | number;

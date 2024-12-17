@@ -11,7 +11,7 @@ import VectorSource from "ol/source/Vector";
 import GeoJSON from "ol/format/GeoJSON";
 import Style from "ol/style/Style.js";
 import {Circle, Fill, Stroke} from "ol/style.js";
-import {getLineData, getStationData, getTramData, updateTramProgress, updateTramProgressInterpolated} from "../utils/dataUtils";
+import {getDisruptions, getLineData, getStationData, getTramData, updateTramProgress, updateTramProgressInterpolated} from "../utils/dataUtils";
 import Overlay from "ol/Overlay";
 import styles from "../styles/tramMap.module.css";
 import {Line, Station, Tram} from "../utils/types";
