@@ -17,7 +17,7 @@ export default function Info({data, userLocation} : {data : any; userLocation : 
 
 	const title = (isTram ? ("Tram " + data.route_name + " " + data.trip_name) : isStation ? data.name : "Line " + data.name).replaceAll("/", "/\u200B").replaceAll(",", ",\u200D");
 	const distance = meters > 999 ? Math.round(meters/100)/10 + "km" : Math.round(meters) + "m";
-	const delay = isTram && "+70s"
+	const delay = isTram/* && (data.delay > 0)*/ && ("+" + data.delay + "s")
 
 	return <>
 		<div className={styles.info}>

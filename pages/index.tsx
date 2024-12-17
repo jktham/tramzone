@@ -32,6 +32,8 @@ export default function Home() {
 		setOverlay(overlay);
 	}
 
+	console.log(tramData?.find(v => v.delay > 0))
+
 	if (linesLoading || stationsLoading || tramsLoading)
 		return <>
 			<SEO/>
@@ -42,7 +44,7 @@ export default function Home() {
 		<>
 			<SEO />
 			<Interface></Interface>
-			{<button style={{position: "absolute", zIndex: 1000}} onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>Mode</button>} {/* DEBUG */}
+			{/*<button style={{position: "absolute", zIndex: 1000}} onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>Mode</button>*/} {/* DEBUG */}
 			<TramMap onClick={onClick} filter={{}} focus={focus} lineData={lineData} stationData={stationData} tramData={tramData} overlay={overlay}></TramMap>
 		</>
 	);
