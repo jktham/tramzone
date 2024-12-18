@@ -39,7 +39,7 @@ export function FocusOverlay({data}: { data: any }) {
 	const isTram = type === "tram";
 	const isStation = type === "station";
 
-	const title = data.trip_name || data.name.replace(data.name.split(",")[0] + ", ", "");
+	const title = data.trip_name || data.name.split(",").pop().trim()
 
 	return <>
 		<div className={styles.focusOverlay}>

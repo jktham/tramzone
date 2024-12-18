@@ -43,10 +43,14 @@
 
 .focus {
 	position: absolute;
+	top: 0;
+	left: 0;
+	z-index: 2;
 }
 
 .overlay {
 	position: absolute;
 	top: 1rem;
 	left: -1.5rem;
+	z-index: 1;
 }

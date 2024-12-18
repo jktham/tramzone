@@ -25,7 +25,7 @@ export const timeOffset = 86400000 * -0;
 export const histDate = ""; // ex: 2024-12-01 -> set offset to n days ago
 
 // TODO: what is type of target (in onClick) / focus should we even define that?
-export default function TramMap({onClick, filter, lineData, stationData, tramData, overlay}: { onClick: (target: any, userLocation : Geolocation) => void; filter: {}; lineData: Line[]; stationData: Station[]; tramData: Tram[]; overlay: any }) {
+export default function TramMap({onClick, filter, lineData, stationData, tramData, overlay}: { onClick: (target: any, userLocation : Geolocation) => void; filter: {trams: "ALL" | "NONE" | number, lines: "ALL" | "NONE" | number, stations: "ALL" | "NONE"}; lineData: Line[]; stationData: Station[]; tramData: Tram[]; overlay: any }) {
 
 	// STATES AND REFS
 
@@ -226,7 +226,7 @@ export default function TramMap({onClick, filter, lineData, stationData, tramDat
 	return (
 		<>
 			<div ref={overlayRef}>
-				{focus && <FocusOverlay data={focus.getProperties()}></FocusOverlay>}
+				<div className={styles.focus}>{focus && <FocusOverlay data={focus.getProperties()}></FocusOverlay>}</div>
 				<div className={styles.overlay}>{overlay}</div>
 			</div>
 			<div className={styles.map} id="map"/>

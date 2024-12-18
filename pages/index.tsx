@@ -1,6 +1,6 @@
 import useSWR from "swr";
 import TramMap from "../components/tramMap";
-import {ReactElement, useState} from "react";
+import {ReactElement, useContext, useState} from "react";
 import Overlay from "../components/overlay";
 import SEO from "../components/SEO";
 import Loading from "../components/loading";
@@ -8,6 +8,7 @@ import { timeOffset, histDate } from "../components/tramMap";
 import {useTheme} from "next-themes";
 import Interface from "../components/interface";
 import {Geolocation} from "ol";
+import {MediaQueryContext} from "./_app";
 
 const fetcher = (url) => fetch(url).then((res) => res.json());
 
@@ -17,6 +18,8 @@ export default function Home() {
 
 	const tramUrl = !histDate ? `/api/trams?active=true&timeOffset=${timeOffset}` : `/api/tramsHist?active=true&date=${histDate}&timeOffset=${timeOffset}`;
 	const {data: tramData, error: tramsError, isLoading: tramsLoading} = useSWR(tramUrl, fetcher, {refreshInterval: 4000});
+
+	const { mobile, tablet } = useContext(MediaQueryContext);
 
 	const [focus, setFocus] = useState<any>(null);
 	const [overlay, setOverlay] = useState<ReactElement>(null);
@@ -39,9 +42,9 @@ export default function Home() {
 	return (
 		<>
 			<SEO />
-			<Interface></Interface>
+			<Interface>{mobile && overlay}</Interface>
 			{/*<button style={{position: "absolute", zIndex: 1000}} onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>Mode</button>*/} {/* DEBUG */}
-			<TramMap onClick={onClick} filter={{}} lineData={lineData} stationData={stationData} tramData={tramData} overlay={overlay}></TramMap>
+			<TramMap onClick={onClick} filter={{trams: "ALL", lines: "ALL", stations: "ALL"}} lineData={lineData} stationData={stationData} tramData={tramData} overlay={!mobile && overlay}></TramMap>
 		</>
 	);
 }
