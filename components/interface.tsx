@@ -4,7 +4,7 @@ import {PropsWithChildren} from "react";
 export default function Interface({children} : {} & PropsWithChildren) {
 
 	return <>
-		<div className={styles.grid}>
+		<div className={styles.interface}>
 			{children}
 		</div>
 	</>
