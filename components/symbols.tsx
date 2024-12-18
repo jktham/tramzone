@@ -11,9 +11,9 @@ export function StationSymbol({data} : {data : any}) {
 
 	return <>
 		<span className={styles.stationSymbol}>
-			<line></line>
-			<circle></circle>
-			<line></line>
+			<span className={styles.line}></span>
+			<span className={styles.circle}></span>
+			<span className={styles.line}></span>
 		</span>
 	</>
 }

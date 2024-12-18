@@ -4,13 +4,10 @@ import Map from "ol/Map";
 import View from "ol/View";
 import TileLayer from "ol/layer/Tile";
 import StadiaMaps from "ol/source/StadiaMaps";
-import OSM from "ol/source/OSM";
 import * as OlProj from "ol/proj";
 import VectorLayer from "ol/layer/Vector";
 import VectorSource from "ol/source/Vector";
 import GeoJSON from "ol/format/GeoJSON";
-import Style from "ol/style/Style.js";
-import {Circle, Fill, Stroke} from "ol/style.js";
 import {getDisruptions, getLineData, getStationData, getTramData, updateTramProgress, updateTramProgressInterpolated} from "../utils/dataUtils";
 import Overlay from "ol/Overlay";
 import styles from "../styles/tramMap.module.css";
@@ -27,7 +24,7 @@ export const timeOffset = 86400000 * -0;
 export const histDate = ""; // ex: 2024-12-01 -> set offset to n days ago
 
 // TODO: what is type of target (in onClick) / focus should we even define that?
-export default function TramMap({onClick, focus, filter, lineData, stationData, tramData, overlay}: { onClick: (target: any, userLocation : Geolocation) => void; focus: any; filter: {}; lineData: Line[]; stationData: Station[]; tramData: Tram[]; overlay: any }) {
+export default function TramMap({onClick, filter, lineData, stationData, tramData, overlay}: { onClick: (target: any, userLocation : Geolocation) => void; filter: {}; lineData: Line[]; stationData: Station[]; tramData: Tram[]; overlay: any }) {
 
 	// STATES AND REFS
 
@@ -44,6 +41,7 @@ export default function TramMap({onClick, focus, filter, lineData, stationData, 
 	const [userLocation, setUserLocation] = useState<Coordinate>([0, 0]);
 	const [prevTramData, setPrevTramData] = useState<Tram[]>();
 	const [geolocation, setGeolocation] = useState<any>();
+	const [focus, setFocus] = useState(null);
 
 	const fps = 10;
 
@@ -152,11 +150,9 @@ export default function TramMap({onClick, focus, filter, lineData, stationData, 
 			let stationCandidate = candidateFeatures.find(f => f.getProperties().type === "station")
 			let lineCandidate = undefined// candidateFeatures.find(f => f.getProperties().type === "line")
 
-			// TODO: in case this is a tram, update overlayPosition constantly
-			//		 in case it is a line, always use e.coordinate
-
 			let selectedFeature = tramCandidate || stationCandidate || lineCandidate
 
+			setFocus(selectedFeature)
 			onClick(selectedFeature, geolocation);
 			overlayLayer.setPosition(selectedFeature?.getProperties()?.geometry?.flatCoordinates || e.coordinate)
 		});
@@ -208,11 +204,15 @@ export default function TramMap({onClick, focus, filter, lineData, stationData, 
 				})
 			}))
 			setPrevTramData(JSON.parse(JSON.stringify(newTramData)));
+
+			if (focus?.getProperties()?.type === "tram")
+				overlayLayer?.setPosition(tramLayer?.getSource().getFeatures().find(f => f.getProperties().trip_id === focus?.getProperties().trip_id)?.getProperties()?.geometry?.flatCoordinates)
+
 		}, 1000 / fps);
 		return () => {
 			clearInterval(interval)
 		};
-	}, [tramData, prevTramData]);
+	}, [tramData, prevTramData, focus]);
 
 	return (
 		<>

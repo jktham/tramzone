@@ -24,7 +24,7 @@
 	padding: 3px;
 }
 
-.stationSymbol line {
+.stationSymbol .line {
 	width: 3px;
 	height: 100%;
 	background: var(--FG1);
@@ -32,11 +32,11 @@
 	margin: 0 0 -1px;
 }
 
-.stationSymbol line:last-child {
+.stationSymbol .line:last-child {
 	margin: -1px 0 0;
 }
 
-.stationSymbol circle {
+.stationSymbol .circle {
 	width: 0.65rem;
 	height: 0.65rem;
 	flex-shrink: 0;
