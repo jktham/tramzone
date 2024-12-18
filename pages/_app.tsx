@@ -1,15 +1,34 @@
 import "/styles/globals.css";
 import "/styles/main.css";
 import {ThemeProvider, useTheme} from "next-themes";
-import {useEffect} from "react";
+import {createContext, useEffect, useState} from "react";
+
+
+export const MediaQueryContext = createContext(null);
 
 export default function App({Component, pageProps}) {
+
+	const [mobile, setMobile] = useState(null);
+	const [tablet, setTablet] = useState(null);
+
+	const updateQueries = (window : Window) => {
+		setMobile(window.matchMedia("screen and (max-width: 50rem)").matches);
+		setTablet(window.matchMedia("screen and (max-width: 86rem)").matches);
+	};
+
+	useEffect(() => {
+		window.addEventListener("resize", () => updateQueries(window));
+		updateQueries(window);
+		return () => window.removeEventListener("resize", () => updateQueries(window));
+	}, []);
 
 	return (
 		<>
 			<ThemeProvider>
 				<ThemeController/>
-				<Component {...pageProps} />
+				<MediaQueryContext.Provider value={{mobile: mobile, tablet: tablet}}>
+					<Component {...pageProps} />
+				</MediaQueryContext.Provider>
 			</ThemeProvider>
 		</>
 	);
