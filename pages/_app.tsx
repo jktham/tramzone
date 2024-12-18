@@ -9,11 +9,11 @@ export const MediaQueryContext = createContext(null);
 export default function App({Component, pageProps}) {
 
 	const [mobile, setMobile] = useState(null);
-	const [tablet, setTablet] = useState(null);
+	//const [tablet, setTablet] = useState(null);
 
 	const updateQueries = (window : Window) => {
 		setMobile(window.matchMedia("screen and (max-width: 50rem)").matches);
-		setTablet(window.matchMedia("screen and (max-width: 86rem)").matches);
+		//setTablet(window.matchMedia("screen and (max-width: 86rem)").matches);
 	};
 
 	useEffect(() => {
@@ -26,7 +26,7 @@ export default function App({Component, pageProps}) {
 		<>
 			<ThemeProvider>
 				<ThemeController/>
-				<MediaQueryContext.Provider value={{mobile: mobile, tablet: tablet}}>
+				<MediaQueryContext.Provider value={{mobile: mobile/*, tablet: tablet*/}}>
 					<Component {...pageProps} />
 				</MediaQueryContext.Provider>
 			</ThemeProvider>

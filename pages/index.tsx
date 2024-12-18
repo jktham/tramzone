@@ -19,7 +19,7 @@ export default function Home() {
 	const tramUrl = !histDate ? `/api/trams?active=true&timeOffset=${timeOffset}` : `/api/tramsHist?active=true&date=${histDate}&timeOffset=${timeOffset}`;
 	const {data: tramData, error: tramsError, isLoading: tramsLoading} = useSWR(tramUrl, fetcher, {refreshInterval: 4000});
 
-	const { mobile, tablet } = useContext(MediaQueryContext);
+	const { mobile } = useContext(MediaQueryContext);
 
 	const [focus, setFocus] = useState<any>(null);
 	const [overlay, setOverlay] = useState<ReactElement>(null);
