@@ -31,13 +31,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 		timeOffset: Number(req.query.timeOffset) || 0,
 	};
 
-	let gtfs_realtime = fetch("https://api.opentransportdata.swiss/gtfsrt2020?format=JSON", {
-		headers: {
-			Authorization: process.env.KEY_RT,
-			"Accept-Encoding": "gzip, deflate",
-		},
-	}).then((res) => res.json());
-
 	let time = query.time || new Date().getTime();
 	time += query.timeOffset;
 
@@ -91,20 +84,51 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 		return false;
 	});
 
-	let realtime = query.static ? {"Entity": []} : await gtfs_realtime;
+	let realtime: any = query.static ? {"Entity": []} : null;
+
+	// check for recent cached rt
+	if (!realtime) {
+		if (existsSync("data/gtfs/realtime.json")) {
+			let cachedRealtime = JSON.parse(await fs.readFile("data/gtfs/realtime.json", "utf-8"));
+			if (time - cachedRealtime.time < 10 * 1000) {
+				console.log("using cached rt");
+				realtime = cachedRealtime.data;
+			}
+		}
+	}
+
+	// get fresh rt
+	if (!realtime) {
+		try {
+			console.log("getting fresh rt");
+			let gtfs_realtime = fetch("https://api.opentransportdata.swiss/gtfsrt2020?format=JSON", {
+				headers: {
+					Authorization: process.env.KEY_RT || process.env.KEY_RT_PUBLIC,
+					"Accept-Encoding": "gzip, deflate",
+				},
+				signal: AbortSignal.timeout(10 * 1000),
+			}).then((res) => res.json());
+			realtime = await gtfs_realtime;
+
+			if (realtime && !realtime?.error) {
+				let tripIds: Set<string> = new Set(tramTrips.map((t) => t.trip_id));
+				let rt = {"Entity": realtime["Entity"].filter((e) => tripIds.has(e["Id"]))};
+				await fs.writeFile("data/gtfs/realtime.json", JSON.stringify({"time": time, "data": rt}));
+			}
+		} catch {
+			console.log("rt timed out");
+		}
+	}
 	
 	// recover from rate limit
 	if (!realtime || realtime.error) {
 		console.log("rt failed: ", realtime)
 		if (existsSync("data/gtfs/realtime.json")) {
-			realtime = JSON.parse(await fs.readFile("data/gtfs/realtime.json", "utf-8"));
+			let cachedRealtime = JSON.parse(await fs.readFile("data/gtfs/realtime.json", "utf-8"));
+			realtime = cachedRealtime.data;
 		} else {
 			realtime = {"Entity": []};
 		}
-	} else { // todo: performance
-		let tripIds: Set<string> = new Set(tramTrips.map((t) => t.trip_id));
-		let rt = {"Entity": realtime["Entity"].filter((e) => tripIds.has(e["Id"]))};
-		fs.writeFile("data/gtfs/realtime.json", JSON.stringify(rt));
 	}
 
 	let tripIds: Set<string> = new Set(tramTrips.map((t) => t.trip_id));
@@ -135,7 +159,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 	for (let i=0; i<updateCount; i++) {
 		if (existsSync(`data/parsed/pastUpdates${i}.json`)) {
 			let {time, update} = JSON.parse(await fs.readFile(`data/parsed/pastUpdates${i}.json`, "utf-8"))
-			if (new Date().getTime() - time < 20000) { // only valid if less than 20s old
+			if (new Date().getTime() - time < 30000) { // only valid if less than 30s old
 				pastUpdates.push(new Map(update));
 			}
 		}
