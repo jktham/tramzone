@@ -90,7 +90,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 	if (!realtime) {
 		if (existsSync("data/gtfs/realtime.json")) {
 			let cachedRealtime = JSON.parse(await fs.readFile("data/gtfs/realtime.json", "utf-8"));
-			if (time - cachedRealtime.time < 10 * 1000) {
+			if (cachedRealtime.time && time - cachedRealtime.time < 10 * 1000) {
 				console.log("using cached rt");
 				realtime = cachedRealtime.data;
 			}
@@ -106,7 +106,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 					Authorization: process.env.KEY_RT || process.env.KEY_RT_PUBLIC,
 					"Accept-Encoding": "gzip, deflate",
 				},
-				signal: AbortSignal.timeout(10 * 1000),
+				signal: AbortSignal.timeout(30 * 1000),
 			}).then((res) => res.json());
 			realtime = await gtfs_realtime;
 
@@ -116,7 +116,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 				await fs.writeFile("data/gtfs/realtime.json", JSON.stringify({"time": time, "data": rt}));
 			}
 		} catch {
-			console.log("rt timed out");
+			console.log("rt timed out: ", realtime);
+			realtime = null;
 		}
 	}
 	
@@ -126,6 +127,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 		if (existsSync("data/gtfs/realtime.json")) {
 			let cachedRealtime = JSON.parse(await fs.readFile("data/gtfs/realtime.json", "utf-8"));
 			realtime = cachedRealtime.data;
+
+			// one more for good measure
+			if (!realtime) {
+				realtime = {"Entity": []};
+				await fs.rm("data/gtfs/realtime.json"); // get rid of broken file
+			}
 		} else {
 			realtime = {"Entity": []};
 		}
