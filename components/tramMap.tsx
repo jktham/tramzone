@@ -4,14 +4,11 @@ import Map from "ol/Map";
 import View from "ol/View";
 import TileLayer from "ol/layer/Tile";
 import StadiaMaps from "ol/source/StadiaMaps";
-import OSM from "ol/source/OSM";
 import * as OlProj from "ol/proj";
 import VectorLayer from "ol/layer/Vector";
 import VectorSource from "ol/source/Vector";
 import GeoJSON from "ol/format/GeoJSON";
-import Style from "ol/style/Style.js";
-import {Circle, Fill, Stroke} from "ol/style.js";
-import {getLineData, getStationData, getTramData, updateTramProgress, updateTramProgressInterpolated} from "../utils/dataUtils";
+import {getDisruptions, getLineData, getStationData, getTramData, updateTramProgress, updateTramProgressInterpolated} from "../utils/dataUtils";
 import Overlay from "ol/Overlay";
 import styles from "../styles/tramMap.module.css";
 import {Line, Station, Tram} from "../utils/types";
@@ -21,13 +18,14 @@ import {Coordinate} from "ol/coordinate";
 import {Attribution} from "ol/control";
 import {useTheme} from "next-themes";
 import {lineStyle, locationStyle, stationStyle, tramStyle} from "../utils/mapUtils";
+import {FocusOverlay, TramDot} from "./symbols";
 
 // todo: integrate these somehow
 export const timeOffset = 86400000 * -0;
 export const histDate = ""; // ex: 2024-12-01 -> set offset to n days ago
 
 // TODO: what is type of target (in onClick) / focus should we even define that?
-export default function TramMap({onClick, focus, filter, lineData, stationData, tramData, overlay}: { onClick: (target: any, userLocation : Geolocation) => void; focus: any; filter: {}; lineData: Line[]; stationData: Station[]; tramData: Tram[]; overlay: any }) {
+export default function TramMap({onClick, filter, lineData, stationData, tramData, overlay}: { onClick: (target: any, userLocation : Geolocation) => void; filter: {}; lineData: Line[]; stationData: Station[]; tramData: Tram[]; overlay: any }) {
 
 	// STATES AND REFS
 
@@ -43,8 +41,10 @@ export default function TramMap({onClick, focus, filter, lineData, stationData, 
 
 	const [userLocation, setUserLocation] = useState<Coordinate>([0, 0]);
 	const [prevTramData, setPrevTramData] = useState<Tram[]>();
+	const [geolocation, setGeolocation] = useState<any>();
+	const [focus, setFocus] = useState(null);
 
-	const fps = 10;
+	const fps = 30;
 
 	const overlayRef = useRef(null);
 
@@ -55,10 +55,12 @@ export default function TramMap({onClick, focus, filter, lineData, stationData, 
 	});
 
 	// Get the users live location
-	let geolocation = new Geolocation({
-		tracking: true,
-		projection: view.getProjection()
-	});
+	if (!geolocation) { // only once
+		setGeolocation(new Geolocation({
+			tracking: true,
+			projection: view.getProjection()
+		}));
+	}
 
 	// INITIALIZE MAP
 
@@ -149,11 +151,9 @@ export default function TramMap({onClick, focus, filter, lineData, stationData, 
 			let stationCandidate = candidateFeatures.find(f => f.getProperties().type === "station")
 			let lineCandidate = undefined// candidateFeatures.find(f => f.getProperties().type === "line")
 
-			// TODO: in case this is a tram, update overlayPosition constantly
-			//		 in case it is a line, always use e.coordinate
-
 			let selectedFeature = tramCandidate || stationCandidate || lineCandidate
 
+			setFocus(selectedFeature)
 			onClick(selectedFeature, geolocation);
 			overlayLayer.setPosition(selectedFeature?.getProperties()?.geometry?.flatCoordinates || e.coordinate)
 		});
@@ -212,9 +212,23 @@ export default function TramMap({onClick, focus, filter, lineData, stationData, 
 		};
 	}, [tramData, prevTramData]);
 
+	// overlay position
+	useEffect(() => {
+		const interval = setInterval(() => {
+			if (focus?.getProperties()?.type === "tram")
+				overlayLayer?.setPosition(tramLayer?.getSource().getFeatures().find(f => f.getProperties().trip_id === focus?.getProperties().trip_id)?.getProperties()?.geometry?.flatCoordinates)
+		}, 1000 / fps);
+		return () => {
+			clearInterval(interval)
+		};
+	}, [focus]);
+
 	return (
 		<>
-			<div ref={overlayRef}>{overlay}</div>
+			<div ref={overlayRef}>
+				{focus && <FocusOverlay data={focus.getProperties()}></FocusOverlay>}
+				<div className={styles.overlay}>{overlay}</div>
+			</div>
 			<div className={styles.map} id="map"/>
 		</>
 	);

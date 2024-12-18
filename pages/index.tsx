@@ -16,7 +16,7 @@ export default function Home() {
 	const {data: stationData, error: stationsError, isLoading: stationsLoading} = useSWR("/api/stations", fetcher);
 
 	const tramUrl = !histDate ? `/api/trams?active=true&timeOffset=${timeOffset}` : `/api/tramsHist?active=true&date=${histDate}&timeOffset=${timeOffset}`;
-	const {data: tramData, error: tramsError, isLoading: tramsLoading} = useSWR(tramUrl, fetcher, {refreshInterval: 1000});
+	const {data: tramData, error: tramsError, isLoading: tramsLoading} = useSWR(tramUrl, fetcher, {refreshInterval: 4000});
 
 	const [focus, setFocus] = useState<any>(null);
 	const [overlay, setOverlay] = useState<ReactElement>(null);
@@ -27,8 +27,6 @@ export default function Home() {
 			return setOverlay(null);
 
 		const overlay = (<><Overlay data={target.getProperties()} userLocation={userLocation}></Overlay></>)
-
-		setFocus(target);
 		setOverlay(overlay);
 	}
 
@@ -42,8 +40,8 @@ export default function Home() {
 		<>
 			<SEO />
 			<Interface></Interface>
-			{<button style={{position: "absolute", zIndex: 1000}} onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>Mode</button>} {/* DEBUG */}
-			<TramMap onClick={onClick} filter={{}} focus={focus} lineData={lineData} stationData={stationData} tramData={tramData} overlay={overlay}></TramMap>
+			{/*<button style={{position: "absolute", zIndex: 1000}} onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>Mode</button>*/} {/* DEBUG */}
+			<TramMap onClick={onClick} filter={{}} lineData={lineData} stationData={stationData} tramData={tramData} overlay={overlay}></TramMap>
 		</>
 	);
 }

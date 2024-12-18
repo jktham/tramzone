@@ -24,7 +24,7 @@
 	padding: 3px;
 }
 
-.stationSymbol line {
+.stationSymbol .line {
 	width: 3px;
 	height: 100%;
 	background: var(--FG1);
@@ -32,11 +32,11 @@
 	margin: 0 0 -1px;
 }
 
-.stationSymbol line:last-child {
+.stationSymbol .line:last-child {
 	margin: -1px 0 0;
 }
 
-.stationSymbol circle {
+.stationSymbol .circle {
 	width: 0.65rem;
 	height: 0.65rem;
 	flex-shrink: 0;
@@ -80,4 +80,64 @@
 .tag.black {
 	color: var(--FB1);
 	background: var(--fill, var(--BW2));
+}
+
+
+.stationDot, .tramDot {
+	position: absolute;
+	display: flex;
+	height: 1px;
+	width: 1px;
+	align-items: center;
+	justify-content: center;
+	overflow: visible;
+}
+
+.tramDot > span {
+	box-sizing: content-box;
+	width: 13px;
+	height: 13px;
+	border: 3px solid var(--BG2);
+	border-radius: 100%;
+	flex-shrink: 0;
+}
+
+.stationDot > span {
+	box-sizing: content-box;
+	width: 7px;
+	height: 7px;
+	background-color: var(--BG2);
+	border: 3px solid var(--FG2);
+	border-radius: 100%;
+	flex-shrink: 0;
+}
+
+.focusOverlay {
+	width: 1px;
+	height: 1px;
+}
+
+.focusOverlay .text {
+	position: absolute;
+	top: -12px;
+	left: -12px;
+	height: 25px;
+	flex-shrink: 0;
+	padding-left: 27px;
+	padding-right: 8px;
+
+	border-radius: 15px;
+	background: var(--BG4);
+
+	display: flex;
+	align-items: center;
+	justify-content: center;
+
+	color: var(--FG4);;
+	font-family: "JetBrains Mono", monospace;
+	font-size: 0.8rem;
+	font-style: normal;
+	font-weight: 700;
+	line-height: normal;
+	text-wrap: nowrap;
 }

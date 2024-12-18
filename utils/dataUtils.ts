@@ -1,5 +1,5 @@
 import {getTramLocation} from "./mapUtils";
-import {Station, Line, Tram} from "./types";
+import {Station, Line, Tram, Disruption} from "./types";
 
 export function getStationData(data: Station[]) {
 	let geoJson = {type: "FeatureCollection", features: []};
@@ -97,4 +97,39 @@ export function updateTramProgress(trams: Tram[], time: number): Tram[] {
 		}
 	}
 	return trams;
+}
+
+export function getDisruptions(trams: Tram[]): Disruption[] {
+	let disruptions: Disruption[] = [];
+	for (let t of trams) {
+		if (t.trip_status != "scheduled") {
+			disruptions.push({
+				tram: t,
+				stop: undefined,
+				message: `Tram ${t.route_name} ${t.trip_name} is ${t.trip_status}`
+			});
+		}
+		for (let s of t.stops) {
+			if (s.stop_status != "scheduled") {
+				disruptions.push({
+					tram: t,
+					stop: s,
+					message: `Stop "${s.stop_name}" of tram ${t.route_name} ${t.trip_name} is ${s.stop_status}`
+				});
+			}
+		}
+	}
+	return disruptions
+}
+
+export function getAverageDelay(trams: Tram[]): number {
+	let sum = 0;
+	let count = 0;
+	for (let t of trams) {
+		if (Math.abs(t.delay) < 86400) { // ignore completely lost trams lol
+			sum += Math.abs(t.delay);
+			count++;
+		}
+	}
+	return sum / count;
 }
