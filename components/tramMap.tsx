@@ -25,7 +25,7 @@ export const timeOffset = 86400000 * -0;
 export const histDate = ""; // ex: 2024-12-01 -> set offset to n days ago
 
 // TODO: what is type of target (in onClick) / focus should we even define that?
-export default function TramMap({onClick, filter, lineData, stationData, tramData, overlay}: { onClick: (target: any, userLocation : Geolocation) => void; filter: {trams: "ALL" | "NONE" | number, lines: "ALL" | "NONE" | number, stations: "ALL" | "NONE"}; lineData: Line[]; stationData: Station[]; tramData: Tram[]; overlay: any }) {
+export default function TramMap({onClick, filter, lineData, stationData, tramData, overlay}: { onClick: (target: any, userLocation : Geolocation) => void; filter?: {trams?: "ALL" | "NONE" | number, lines?: "ALL" | "NONE" | number, stations?: "ALL" | "NONE"}; lineData: Line[]; stationData: Station[]; tramData: Tram[]; overlay: any }) {
 
 	// STATES AND REFS
 
@@ -171,7 +171,7 @@ export default function TramMap({onClick, filter, lineData, stationData, tramDat
 			newMap.setTarget(null);
 			setMap(null);
 		};
-	}, [stadiaLayer, lineLayer, stationLayer, tramLayer, userLocationLayer, overlayLayer]);
+	}, [stadiaLayer, lineLayer, stationLayer, tramLayer, userLocationLayer, overlayLayer, focus]);
 
 	// UPDATES
 
@@ -194,7 +194,7 @@ export default function TramMap({onClick, filter, lineData, stationData, tramDat
 		lineLayer?.setStyle(lineStyle(filter, focus))
 		stationLayer?.setStyle(stationStyle(filter, focus))
 		tramLayer?.setStyle(tramStyle(filter, focus))
-	}, [theme]);
+	}, [theme, focus]);
 
 	// tram position
 	useEffect(() => {

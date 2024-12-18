@@ -124,66 +124,101 @@ export function getTramLocation(tram: Tram, lines: Line[]) {
 
 // STYLES
 
-export const tramStyle = (filter, focus) => (feature: Feature) => [
-	new Style({
-		image: new Circle({
-			radius: 8,
-			fill: new Fill({
+export const tramStyle = (filter, focus) => (feature: Feature) => {
+	if (filter.trams === "ALL" || (typeof filter.trams === "undefined")) {
+		return [
+			new Style({
+				image: new Circle({
+					radius: 8,
+					fill: new Fill({
+						color: feature.get("color"),
+					}),
+					stroke: new Stroke({
+						width: 3,
+						color: getComputedStyle(document.documentElement).getPropertyValue('--BG2')
+					})
+				})
+			})
+		]
+	} else if (feature.values_.name == (filter.trams as string)) {
+		return [
+			new Style({
+				image: new Circle({
+					radius: 8,
+					fill: new Fill({
+						color: feature.get("color"),
+					}),
+					stroke: new Stroke({
+						width: 3,
+						color: getComputedStyle(document.documentElement).getPropertyValue('--BG2')
+					})
+				}),
+			})
+		]
+	} else {
+		return [
+			new Style({
+				image: new Circle({
+					radius: 20,
+					fill: new Fill({
+						color: "transparent"
+					}),
+				}),
+			}),
+		]
+	}
+}
+
+export const stationStyle = (filter, focus) => (feature: Feature) => {
+	if (filter.stations === "NONE") {
+		return [new Style({
+			image: new Circle({
+				radius: 20,
+				fill: new Fill({
+					color: "transparent"
+				}),
+			})
+		})]
+	} else {
+		return [new Style({
+			image: new Circle({
+				radius: 5,
+				fill: new Fill({
+					color: getComputedStyle(document.documentElement).getPropertyValue('--BG2')
+				}),
+				stroke: new Stroke({
+					width: 3,
+					color: getComputedStyle(document.documentElement).getPropertyValue('--FG2')
+				})
+			})
+		})]
+	}
+}
+
+export const lineStyle = (filter, focus) => (feature: Feature) => {
+	if (filter.lines === "ALL" || (typeof filter.lines === "undefined")) {
+		return [new Style({
+			stroke: new Stroke({
+				width: 3,
 				color: feature.get("color"),
 			}),
+		})]
+	} else if (feature.values_.name == (filter.lines as string)) {
+		return [new Style({
 			stroke: new Stroke({
 				width: 3,
-				color: getComputedStyle(document.documentElement).getPropertyValue('--BG2')
-			})
-		}),
-	}),
-	new Style({
-		image: new Circle({
-			radius: 20,
-			fill: new Fill({
-				color: "transparent"
+				color: feature.get("color"),
 			}),
-		})
-	}),
-]
-
-export const stationStyle = (filter, focus) => (feature: Feature) => [
-	new Style({
-		image: new Circle({
-			radius: 5,
-			fill: new Fill({
-				color: getComputedStyle(document.documentElement).getPropertyValue('--BG2')
-			}),
+		})]
+	} else {
+		return [new Style({
 			stroke: new Stroke({
-				width: 3,
-				color: getComputedStyle(document.documentElement).getPropertyValue('--FG2')
-			})
-		})
-	}),
-	new Style({
-		image: new Circle({
-			radius: 20,
-			fill: new Fill({
-				color: "transparent"
+				width: 10,
+				color: "transparent",
 			}),
-		})
-	}),
-]
-
-export const lineStyle = (filter, focus) => (feature: Feature) => [
-	new Style({
-		stroke: new Stroke({
-			width: 3,
-			color: feature.get("color"),
-		}),
-	}),
-	new Style({
-		stroke: new Stroke({
-			width: 10,
-			color: "transparent",
-		}),
-	}),
-]
+		})]
+	}
+}
 
 
 export const locationStyle = (filter, focus) => (feature: Feature) => [
