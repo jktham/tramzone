@@ -40,3 +40,13 @@
 .attribution button {
 	display: none;
 }
+
+.focus {
+	position: absolute;
+}
+
+.overlay {
+	position: absolute;
+	top: 1rem;
+	left: -1.5rem;
+}

@@ -18,6 +18,7 @@ import {Coordinate} from "ol/coordinate";
 import {Attribution} from "ol/control";
 import {useTheme} from "next-themes";
 import {lineStyle, locationStyle, stationStyle, tramStyle} from "../utils/mapUtils";
+import {FocusOverlay, TramDot} from "./symbols";
 
 // todo: integrate these somehow
 export const timeOffset = 86400000 * -0;
@@ -43,7 +44,7 @@ export default function TramMap({onClick, filter, lineData, stationData, tramDat
 	const [geolocation, setGeolocation] = useState<any>();
 	const [focus, setFocus] = useState(null);
 
-	const fps = 10;
+	const fps = 30;
 
 	const overlayRef = useRef(null);
 
@@ -204,19 +205,29 @@ export default function TramMap({onClick, filter, lineData, stationData, tramDat
 				})
 			}))
 			setPrevTramData(JSON.parse(JSON.stringify(newTramData)));
-
-			if (focus?.getProperties()?.type === "tram")
-				overlayLayer?.setPosition(tramLayer?.getSource().getFeatures().find(f => f.getProperties().trip_id === focus?.getProperties().trip_id)?.getProperties()?.geometry?.flatCoordinates)
-
 		}, 1000 / fps);
 		return () => {
 			clearInterval(interval)
 		};
-	}, [tramData, prevTramData, focus]);
+	}, [tramData, prevTramData]);
+
+	// overlay position
+	useEffect(() => {
+		const interval = setInterval(() => {
+			if (focus?.getProperties()?.type === "tram")
+				overlayLayer?.setPosition(tramLayer?.getSource().getFeatures().find(f => f.getProperties().trip_id === focus?.getProperties().trip_id)?.getProperties()?.geometry?.flatCoordinates)
+		}, 1000 / fps);
+		return () => {
+			clearInterval(interval)
+		};
+	}, [focus]);
 
 	return (
 		<>
-			<div ref={overlayRef}>{overlay}</div>
+			<div ref={overlayRef}>
+				{focus && <FocusOverlay data={focus.getProperties()}></FocusOverlay>}
+				<div className={styles.overlay}>{overlay}</div>
+			</div>
 			<div className={styles.map} id="map"/>
 		</>
 	);
