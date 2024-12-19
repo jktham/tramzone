@@ -19,7 +19,7 @@ import {Attribution} from "ol/control";
 import {useTheme} from "next-themes";
 import {lineStyle, locationStyle, stationStyle, tramStyle} from "../utils/mapUtils";
 import {FocusOverlay, TramDot} from "./symbols";
-import {ControlBar, ControlButton, ControlGroup} from "./controls";
+import {MapControlBar, MapControl, MapControlGroup} from "./controls";
 import {GpsFix, Minus, NavigationArrow, Plus} from "@phosphor-icons/react";
 
 // todo: integrate these somehow
@@ -27,7 +27,7 @@ export const timeOffset = 106400000 * -0;
 export const histDate = ""; // ex: 2024-12-01 -> set offset to n days ago
 
 // TODO: what is type of target (in onClick) / focus should we even define that?
-export default function TramMap({onClick, filter, lineData, stationData, tramData, overlay}: { onClick: (target: any, userLocation : Geolocation) => void; filter?: {trams?: "ALL" | "NONE" | number, lines?: "ALL" | "NONE" | number, stations?: "ALL" | "NONE"}; lineData: Line[]; stationData: Station[]; tramData: Tram[]; overlay: any }) {
+export default function TramMap({onClick, filter, lineData, stationData, tramData, overlay}: { onClick: (target: any, userLocation: Geolocation) => void; filter?: { trams?: "ALL" | "NONE" | number, lines?: "ALL" | "NONE" | number, stations?: "ALL" | "NONE" }; lineData: Line[]; stationData: Station[]; tramData: Tram[]; overlay: any }) {
 
 	// STATES AND REFS
 
@@ -262,14 +262,16 @@ export default function TramMap({onClick, filter, lineData, stationData, tramDat
 
 	return (
 		<>
-			<div className={styles.controls}><ControlBar>
-				<ControlButton onClick={restoreRotation}><NavigationArrow color={"var(--FG1)"} weight={"bold"} size={16}></NavigationArrow></ControlButton>
-				<ControlGroup fillColor={"var(--BG2)"}>
-					<ControlButton onClick={increaseZoom}><Plus color={"var(--FG1)"} weight={"bold"} size={16}></Plus></ControlButton>
-					<ControlButton onClick={decreaseZoom}><Minus color={"var(--FG1)"} weight={"bold"} size={16}></Minus></ControlButton>
-				</ControlGroup>
-				<ControlButton onClick={centerView}><GpsFix color={"var(--LOC)"} weight={"bold"} size={16}></GpsFix></ControlButton>
-			</ControlBar></div>
+			<div className={styles.controls}>
+				<MapControlBar>
+					<MapControl onClick={restoreRotation}><NavigationArrow color={"var(--FG1)"} weight={"bold"} size={16}></NavigationArrow></MapControl>
+					<MapControlGroup fillColor={"var(--BG2)"}>
+						<MapControl onClick={increaseZoom}><Plus color={"var(--FG1)"} weight={"bold"} size={16}></Plus></MapControl>
+						<MapControl onClick={decreaseZoom}><Minus color={"var(--FG1)"} weight={"bold"} size={16}></Minus></MapControl>
+					</MapControlGroup>
+					<MapControl onClick={centerView}><GpsFix color={"var(--LOC)"} weight={"bold"} size={16}></GpsFix></MapControl>
+				</MapControlBar>
+			</div>
 			<div ref={overlayRef}>
 				<div className={styles.focus}>{focus && <FocusOverlay data={focus.getProperties()}></FocusOverlay>}</div>
 				<div className={styles.overlay}>{overlay}</div>

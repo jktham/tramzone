@@ -28,7 +28,7 @@
 	background: var(--fill1, transparent);
 }
 
-.control {
+.mapControl {
 	width: var(--size);
 	height: var(--size);
 	display: flex;
@@ -39,4 +39,64 @@
 
 	color: var(--FG1);
 	cursor: pointer;
+}
+
+.fancy {
+	max-width: 10rem;
+	width: 100%;
+	height: 10rem;
+	border-radius: 1.5rem;
+	background-color: var(--BG2);
+	cursor: pointer;
+	position: relative;
+	flex-shrink: 1;
+	flex-grow: 1;
+	flex-basis: 6rem;
+	min-width: 6rem;
+}
+
+.fancy .knob {
+	position: absolute;
+	top: 0.75rem;
+	left: 0.75rem;
+	height: 1.5rem;
+	width: 1.5rem;
+	border: 3px solid var(--BG4);
+	border-radius: 100%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.fancy.toggled .knob span {
+	height: 0.9rem;
+	width: 0.9rem;
+	background-color: var(--BG4);
+	border-radius: 100%;
+}
+
+.fancy svg {
+	height: 100%;
+	width: 100%;
+}
+
+.fancy:not(.toggled) svg * {
+	stroke: var(--FG3) !important;
+}
+
+.fancy h2 {
+	color: var(--FG1);
+	font-family: "JetBrains Mono", monospace;
+	font-size: 0.8rem;
+	font-style: normal;
+	font-weight: 700;
+	line-height: normal;
+
+	position: absolute;
+	left: 0.75rem;
+	bottom: 1.5rem;
+}
+
+.fancy:not(.toggled) h2 {
+	color: var(--FG3);
 }
