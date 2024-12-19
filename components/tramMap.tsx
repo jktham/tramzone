@@ -56,6 +56,14 @@ export default function TramMap({onClick, filter, lineData, stationData, tramDat
 		zoom: 15,
 	});
 
+	const centerView = () => {
+		map.getView().animate({
+			center: userLocation,
+			zoom: 15.5,
+     		duration: 500
+		})
+	}
+
 	// Get the users live location
 	if (!geolocation) { // only once
 		setGeolocation(new Geolocation({
@@ -236,7 +244,7 @@ export default function TramMap({onClick, filter, lineData, stationData, tramDat
 					<ControlButton><Plus color={"var(--FG1)"} weight={"bold"} size={16}></Plus></ControlButton>
 					<ControlButton><Minus color={"var(--FG1)"} weight={"bold"} size={16}></Minus></ControlButton>
 				</ControlGroup>
-				<ControlButton><GpsFix color={"var(--LOC)"} weight={"bold"} size={16}></GpsFix></ControlButton>
+				<ControlButton onClick={centerView}><GpsFix color={"var(--LOC)"} weight={"bold"} size={16}></GpsFix></ControlButton>
 			</ControlBar></div>
 			<div ref={overlayRef}>
 				<div className={styles.focus}>{focus && <FocusOverlay data={focus.getProperties()}></FocusOverlay>}</div>
