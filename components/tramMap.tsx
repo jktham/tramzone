@@ -56,13 +56,31 @@ export default function TramMap({onClick, filter, lineData, stationData, tramDat
 		zoom: 15,
 	});
 
+	// OnClick function to update the view
 	const centerView = () => {
 		map.getView().animate({
 			center: userLocation,
-			zoom: 15.5,
+			zoom: 16,
      		duration: 500
 		})
 	}
+
+	const increaseZoom = () => {
+		const oldZoom = map.getView().getZoom();
+		map.getView().animate({
+			zoom: (oldZoom + 1),
+     		duration: 300
+		})
+	}
+
+	const decreaseZoom = () => {
+		const oldZoom = map.getView().getZoom();
+		map.getView().animate({
+			zoom: (oldZoom - 1),
+     		duration: 300
+		})
+	}
+
 
 	// Get the users live location
 	if (!geolocation) { // only once
@@ -241,8 +259,8 @@ export default function TramMap({onClick, filter, lineData, stationData, tramDat
 			<div className={styles.controls}><ControlBar>
 				<ControlButton><NavigationArrow color={"var(--FG1)"} weight={"bold"} size={16}></NavigationArrow></ControlButton>
 				<ControlGroup fillColor={"var(--BG2)"}>
-					<ControlButton><Plus color={"var(--FG1)"} weight={"bold"} size={16}></Plus></ControlButton>
-					<ControlButton><Minus color={"var(--FG1)"} weight={"bold"} size={16}></Minus></ControlButton>
+					<ControlButton onClick={increaseZoom}><Plus color={"var(--FG1)"} weight={"bold"} size={16}></Plus></ControlButton>
+					<ControlButton onClick={decreaseZoom}><Minus color={"var(--FG1)"} weight={"bold"} size={16}></Minus></ControlButton>
 				</ControlGroup>
 				<ControlButton onClick={centerView}><GpsFix color={"var(--LOC)"} weight={"bold"} size={16}></GpsFix></ControlButton>
 			</ControlBar></div>
