@@ -6,11 +6,13 @@
 	pointer-events: none;
 
 	display: grid;
-	grid-template-columns: 1.5rem min-content auto min-content 1.5rem;
+	grid-template-columns: 1.5rem min-content min-content auto min-content min-content 1.5rem;
 	grid-template-rows: 1.5rem auto 1.5rem;
 	grid-column-gap: 0;
 	grid-row-gap: 0;
-	grid-template-areas: ". . . . ." ". L . R ." ". . . . .";
+	grid-template-areas: ". .        .         . .         .        ."
+						 ". sidebarL controlsL . controlsR sidebarR ."
+						 ". .        .         . .         .        .";
 }
 
 .interface > * {
@@ -20,10 +22,13 @@
 @media screen and (max-width: 50rem) {
 	.interface {
 		display: grid;
-		grid-template-columns: 1.5rem auto 1.5rem;
+		grid-template-columns: 1.5rem min-content auto min-content 1.5rem;
 		grid-template-rows: 1.5rem auto min-content 1.5rem;
 		grid-column-gap: 0;
 		grid-row-gap: 0;
-		grid-template-areas: ". . ." ". controls ." ". overlay ." ". . .";
+		grid-template-areas: ". .         .       .         ."
+							 ". controlsL .       controlsR ."
+							 ". overlay   overlay overlay   ."
+							 ". .         .       .         .";
 	}
 }

@@ -1,5 +1,5 @@
 import styles from "../styles/controls.module.css"
-import {PropsWithChildren} from "react";
+import {CSSProperties, PropsWithChildren} from "react";
 
 export function ControlButton({children, onClick, fillColor} : {fillColor? : string, onClick? : () => void} & PropsWithChildren) {
 
@@ -15,9 +15,9 @@ export function ControlGroup({children, fillColor} : {fillColor? : string} & Pro
 	</>
 }
 
-export function ControlBar({children}: PropsWithChildren) {
+export function ControlBar({children, style} : {style? : CSSProperties} & PropsWithChildren) {
 
 	return <>
-		<div className={styles.bar}>{children}</div>
+		<div style={style} className={styles.bar}>{children}</div>
 	</>
 }

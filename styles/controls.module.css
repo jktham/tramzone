@@ -28,8 +28,6 @@
 	background: var(--fill1, transparent);
 }
 
-
-
 .control {
 	width: var(--size);
 	height: var(--size);

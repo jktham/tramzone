@@ -23,7 +23,7 @@ import {ControlBar, ControlButton, ControlGroup} from "./controls";
 import {GpsFix, Minus, NavigationArrow, Plus} from "@phosphor-icons/react";
 
 // todo: integrate these somehow
-export const timeOffset = 106400000 * -1;
+export const timeOffset = 106400000 * -0;
 export const histDate = ""; // ex: 2024-12-01 -> set offset to n days ago
 
 // TODO: what is type of target (in onClick) / focus should we even define that?

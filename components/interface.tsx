@@ -10,7 +10,7 @@ export default function Interface({children} : {} & PropsWithChildren) {
 
 	return <>
 		<div className={styles.interface}>
-			{mobile && <ControlBar><ControlButton><StackSimple color={"var(--FG1)"} weight={"bold"} size={16}></StackSimple></ControlButton></ControlBar>}
+			<ControlBar style={{gridArea: "controlsL"}}><ControlButton><StackSimple color={"var(--FG1)"} weight={"bold"} size={16}></StackSimple></ControlButton></ControlBar>
 			{children}
 		</div>
 	</>

@@ -21,6 +21,8 @@ export default function Home() {
 
 	const { mobile } = useContext(MediaQueryContext);
 
+	const { theme, setTheme } = useTheme();
+
 	const [overlay, setOverlay] = useState<ReactElement>(null);
 	const [clickFilter, setClickFilter] = useState<number>(0);
 
