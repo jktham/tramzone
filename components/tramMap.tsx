@@ -264,7 +264,7 @@ export default function TramMap({onClick, filter, lineData, stationData, tramDat
 		<>
 			<div className={styles.controls}>
 				<MapControlBar>
-					<MapControl onClick={restoreRotation}><NavigationArrow color={"var(--FG1)"} weight={"bold"} size={16}></NavigationArrow></MapControl>
+					<MapControl onClick={restoreRotation}><div style={{height: "16px", transform: "rotate(45deg)"}}><NavigationArrow color={"var(--FG1)"} weight={"bold"} size={16}></NavigationArrow></div></MapControl>
 					<MapControlGroup fillColor={"var(--BG2)"}>
 						<MapControl onClick={increaseZoom}><Plus color={"var(--FG1)"} weight={"bold"} size={16}></Plus></MapControl>
 						<MapControl onClick={decreaseZoom}><Minus color={"var(--FG1)"} weight={"bold"} size={16}></Minus></MapControl>
