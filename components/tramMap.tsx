@@ -81,6 +81,12 @@ export default function TramMap({onClick, filter, lineData, stationData, tramDat
 		})
 	}
 
+	const restoreRotation = () => {
+		map.getView().animate({
+			rotation: 0,
+     		duration: 300
+		})
+	}
 
 	// Get the users live location
 	if (!geolocation) { // only once
@@ -257,7 +263,7 @@ export default function TramMap({onClick, filter, lineData, stationData, tramDat
 	return (
 		<>
 			<div className={styles.controls}><ControlBar>
-				<ControlButton><NavigationArrow color={"var(--FG1)"} weight={"bold"} size={16}></NavigationArrow></ControlButton>
+				<ControlButton onClick={restoreRotation}><NavigationArrow color={"var(--FG1)"} weight={"bold"} size={16}></NavigationArrow></ControlButton>
 				<ControlGroup fillColor={"var(--BG2)"}>
 					<ControlButton onClick={increaseZoom}><Plus color={"var(--FG1)"} weight={"bold"} size={16}></Plus></ControlButton>
 					<ControlButton onClick={decreaseZoom}><Minus color={"var(--FG1)"} weight={"bold"} size={16}></Minus></ControlButton>
