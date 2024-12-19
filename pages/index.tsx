@@ -21,16 +21,19 @@ export default function Home() {
 
 	const { mobile } = useContext(MediaQueryContext);
 
-	const [focus, setFocus] = useState<any>(null);
 	const [overlay, setOverlay] = useState<ReactElement>(null);
-	const {theme, setTheme} = useTheme();
+	const [clickFilter, setClickFilter] = useState<number>(0);
 
 	const onClick = (target : any, userLocation : Geolocation) => {
-		if (target === undefined)
-			return setOverlay(null);
+		if (!target) {
+			setClickFilter(0);
+			setOverlay(null);
+			return;
+		}
 
 		const overlay = (<><Overlay data={target.getProperties()} userLocation={userLocation}></Overlay></>)
 		setOverlay(overlay);
+		setClickFilter(target.getProperties().type === "tram" ? Number(target.getProperties().name) : 0);
 	}
 
 	if (linesLoading || stationsLoading || tramsLoading)
@@ -44,7 +47,7 @@ export default function Home() {
 			<SEO />
 			<Interface>{mobile && overlay}</Interface>
 			{/*<button style={{position: "absolute", zIndex: 1000}} onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>Mode</button>*/} {/* DEBUG */}
-			<TramMap onClick={onClick} filter={{trams: "ALL", lines: "ALL", stations: "ALL"}} lineData={lineData} stationData={stationData} tramData={tramData} overlay={!mobile && overlay}></TramMap>
+			<TramMap onClick={onClick} filter={{trams: clickFilter ?? "ALL", lines: clickFilter ?? "ALL", stations: "ALL"}} lineData={lineData} stationData={stationData} tramData={tramData} overlay={!mobile && overlay}></TramMap>
 		</>
 	);
 }

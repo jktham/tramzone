@@ -24,6 +24,6 @@
 		grid-template-rows: 1.5rem auto min-content 1.5rem;
 		grid-column-gap: 0;
 		grid-row-gap: 0;
-		grid-template-areas: ". . ." ". . ." ". overlay ." ". . .";
+		grid-template-areas: ". . ." ". controls ." ". overlay ." ". . .";
 	}
 }

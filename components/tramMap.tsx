@@ -19,9 +19,11 @@ import {Attribution} from "ol/control";
 import {useTheme} from "next-themes";
 import {lineStyle, locationStyle, stationStyle, tramStyle} from "../utils/mapUtils";
 import {FocusOverlay, TramDot} from "./symbols";
+import {ControlBar, ControlButton, ControlGroup} from "./controls";
+import {GpsFix, Minus, NavigationArrow, Plus} from "@phosphor-icons/react";
 
 // todo: integrate these somehow
-export const timeOffset = 86400000 * -0;
+export const timeOffset = 106400000 * -1;
 export const histDate = ""; // ex: 2024-12-01 -> set offset to n days ago
 
 // TODO: what is type of target (in onClick) / focus should we even define that?
@@ -83,7 +85,7 @@ export default function TramMap({onClick, filter, lineData, stationData, tramDat
 					featureProjection: view.getProjection(),
 				}),
 			}),
-			style: lineStyle(filter, focus)
+			style: lineStyle(filter)
 		}))
 
 		setStationLayer(new VectorLayer({
@@ -94,7 +96,7 @@ export default function TramMap({onClick, filter, lineData, stationData, tramDat
 					featureProjection: view.getProjection(),
 				}),
 			}),
-			style: stationStyle(filter, focus)
+			style: stationStyle(filter)
 		}))
 
 		setTramLayer(new VectorLayer({
@@ -105,7 +107,7 @@ export default function TramMap({onClick, filter, lineData, stationData, tramDat
 					featureProjection: view.getProjection(),
 				})
 			}),
-			style: tramStyle(filter, focus)
+			style: tramStyle(filter)
 		}))
 
 		setUserLocationLayer(new VectorLayer({
@@ -116,7 +118,7 @@ export default function TramMap({onClick, filter, lineData, stationData, tramDat
 					geometry: new Point(userLocation)
 				})]
 			}),
-			style: locationStyle(filter, focus)
+			style: locationStyle(filter)
 		}))
 
 		setOverlayLayer(new Overlay({
@@ -149,9 +151,13 @@ export default function TramMap({onClick, filter, lineData, stationData, tramDat
 			let candidateFeatures = newMap.getFeaturesAtPixel(e.pixel);
 			let tramCandidate = candidateFeatures.find(f => f.getProperties().type === "tram")
 			let stationCandidate = candidateFeatures.find(f => f.getProperties().type === "station")
-			let lineCandidate = undefined// candidateFeatures.find(f => f.getProperties().type === "line")
+			let lineCandidate = candidateFeatures.find(f => f.getProperties().type === "line")
 
-			let selectedFeature = tramCandidate || stationCandidate || lineCandidate
+			if (tramCandidate) console.log(tramCandidate)
+			if (stationCandidate) console.log(stationCandidate)
+			if (lineCandidate) console.log(lineCandidate)
+
+			let selectedFeature = tramCandidate || stationCandidate// || lineCandidate
 
 			setFocus(selectedFeature)
 			onClick(selectedFeature, geolocation);
@@ -171,7 +177,7 @@ export default function TramMap({onClick, filter, lineData, stationData, tramDat
 			newMap.setTarget(null);
 			setMap(null);
 		};
-	}, [stadiaLayer, lineLayer, stationLayer, tramLayer, userLocationLayer, overlayLayer, focus]);
+	}, [stadiaLayer, lineLayer, stationLayer, tramLayer, userLocationLayer, overlayLayer]);
 
 	// UPDATES
 
@@ -180,7 +186,6 @@ export default function TramMap({onClick, filter, lineData, stationData, tramDat
 		userLocationLayer?.setSource(new VectorSource({
 			features: [new Feature({
 				geometry: new Point(userLocation),
-				type: "userLoc"
 			})]
 		}))
 	}, [userLocation]);
@@ -191,10 +196,10 @@ export default function TramMap({onClick, filter, lineData, stationData, tramDat
 			layer: theme === "light" ? "alidade_smooth" : "alidade_smooth_dark",
 			retina: true,
 		}))
-		lineLayer?.setStyle(lineStyle(filter, focus))
-		stationLayer?.setStyle(stationStyle(filter, focus))
-		tramLayer?.setStyle(tramStyle(filter, focus))
-	}, [theme, focus]);
+		lineLayer?.setStyle(lineStyle(filter))
+		stationLayer?.setStyle(stationStyle(filter))
+		tramLayer?.setStyle(tramStyle(filter))
+	}, [theme, filter]);
 
 	// tram position
 	useEffect(() => {
@@ -225,6 +230,14 @@ export default function TramMap({onClick, filter, lineData, stationData, tramDat
 
 	return (
 		<>
+			<div className={styles.controls}><ControlBar>
+				<ControlButton><NavigationArrow color={"var(--FG1)"} weight={"bold"} size={16}></NavigationArrow></ControlButton>
+				<ControlGroup fillColor={"var(--BG2)"}>
+					<ControlButton><Plus color={"var(--FG1)"} weight={"bold"} size={16}></Plus></ControlButton>
+					<ControlButton><Minus color={"var(--FG1)"} weight={"bold"} size={16}></Minus></ControlButton>
+				</ControlGroup>
+				<ControlButton><GpsFix color={"var(--LOC)"} weight={"bold"} size={16}></GpsFix></ControlButton>
+			</ControlBar></div>
 			<div ref={overlayRef}>
 				<div className={styles.focus}>{focus && <FocusOverlay data={focus.getProperties()}></FocusOverlay>}</div>
 				<div className={styles.overlay}>{overlay}</div>

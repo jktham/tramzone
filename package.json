@@ -8,6 +8,7 @@
 		"parse": "pnpm tsx --max-old-space-size=500 --expose-gc utils/parse.ts"
 	},
 	"dependencies": {
+		"@phosphor-icons/react": "^2.1.7",
 		"async-lock": "^1.4.1",
 		"clsx": "^2.1.1",
 		"csv-parser": "^3.0.0",

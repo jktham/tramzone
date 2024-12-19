@@ -1,0 +1,44 @@
+.bar {
+	--size: 2.25rem;
+	--padding: 0.25rem;
+	--gaps: 0.25rem;
+
+	display: flex;
+	padding: var(--padding);
+	flex-direction: column;
+	align-items: flex-start;
+	gap: var(--gaps);
+	width: min-content;
+	height: min-content;
+	grid-area: controls;
+
+	border-radius: 5rem;
+	background: var(--BG1);
+	box-shadow: 0 0 30px 0 rgba(0, 0, 0, 0.25);
+}
+
+.group {
+	display: flex;
+	width: var(--size);
+	flex-direction: column;
+	align-items: flex-start;
+	gap: var(--gaps);
+
+	border-radius: 5rem;
+	background: var(--fill1, transparent);
+}
+
+
+
+.control {
+	width: var(--size);
+	height: var(--size);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 5rem;
+	background: var(--fill2, transparent);
+
+	color: var(--FG1);
+	cursor: pointer;
+}
