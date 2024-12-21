@@ -41,7 +41,7 @@ export default function TramMap({onClick, filter, lineData, stationData, tramDat
 	const [userLocationLayer, setUserLocationLayer] = useState<VectorLayer>();
 	const [overlayLayer, setOverlayLayer] = useState<Overlay>();
 
-	const [userLocation, setUserLocation] = useState<Coordinate>([0, 0]);
+	const [userLocation, setUserLocation] = useState<Coordinate>(OlProj.fromLonLat([8.541937, 47.363062]));
 	const [prevTramData, setPrevTramData] = useState<Tram[]>();
 	const [geolocation, setGeolocation] = useState<any>();
 	const [focus, setFocus] = useState(null);

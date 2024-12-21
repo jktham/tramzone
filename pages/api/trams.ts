@@ -306,6 +306,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
 	if (query.active) {
 		trams = trams.filter((t) => t.active);
+		trams = trams.filter((t) => t.trip_status != "canceled" && t.trip_status != "deleted")
 	}
 	if (query.line) {
 		trams = trams.filter((t) => t.route_name == query.line);
