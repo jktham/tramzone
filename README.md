@@ -1,7 +1,7 @@
 # Tramzone
 FWE2024 final project
 
-[Deployment Link](https://fp-p33.fwe24.ivia.ch/)
+[Deployment Link](https://tramz.one/)
 
 ## Getting Started
 To start the server:
