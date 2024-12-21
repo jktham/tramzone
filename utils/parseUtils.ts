@@ -95,7 +95,6 @@ async function parseStations() {
 	stations = stations.filter((s) => !ignoredStations.includes(s.id));
 
 	await fs.writeFile("data/parsed/stations.json", JSON.stringify(stations));
-	console.log(process.memoryUsage().heapUsed / 1024 / 1024)
 }
 
 async function parseLines() {
@@ -163,7 +162,6 @@ async function parseLines() {
 	lines.push(extraLine);
 	
 	await fs.writeFile("data/parsed/lines.json", JSON.stringify(lines));
-	console.log(process.memoryUsage().heapUsed / 1024 / 1024)
 }
 
 async function getGtfs(date: string) {
@@ -212,7 +210,6 @@ async function parseRoutes(date: string) {
 	});
 	routes = routes.filter((s) => s.type == "900" && s.agency == "3849"); // tram && VBZ
 	await fs.writeFile("data/parsed/routes.json", JSON.stringify(routes));
-	console.log(process.memoryUsage().heapUsed / 1024 / 1024);
 }
 
 async function filterTrips(date: string) {
@@ -240,7 +237,6 @@ async function filterTrips(date: string) {
 			resolve();
 		});
 	});
-	console.log(process.memoryUsage().heapUsed / 1024 / 1024)
 }
 
 async function parseTrips(date: string) {
@@ -258,7 +254,6 @@ async function parseTrips(date: string) {
 		};
 	});
 	await fs.writeFile("data/parsed/trips.json", JSON.stringify(trips));
-	console.log(process.memoryUsage().heapUsed / 1024 / 1024)
 }
 
 async function filterStopTimes(date: string) {
@@ -286,7 +281,6 @@ async function filterStopTimes(date: string) {
 			resolve();
 		});
 	});
-	console.log(process.memoryUsage().heapUsed / 1024 / 1024)
 }
 
 async function parseStopTimes(date: string) {
@@ -322,7 +316,6 @@ async function parseStopTimes(date: string) {
 		});
 	});
 	writeStream.write("]");
-	console.log(process.memoryUsage().heapUsed / 1024 / 1024)
 }
 
 async function parseServices(date: string) {
@@ -349,7 +342,6 @@ async function parseServices(date: string) {
 		};
 	});
 	await fs.writeFile("data/parsed/services.json", JSON.stringify(services));
-	console.log(process.memoryUsage().heapUsed / 1024 / 1024)
 }
 
 async function filterServiceExceptions(date: string) {
@@ -377,7 +369,6 @@ async function filterServiceExceptions(date: string) {
 			resolve();
 		});
 	});
-	console.log(process.memoryUsage().heapUsed / 1024 / 1024)
 }
 
 async function parseServiceExceptions(date: string) {
@@ -410,16 +401,13 @@ async function parseServiceExceptions(date: string) {
 		});
 	});
 	writeStream.write("]");
-	console.log(process.memoryUsage().heapUsed / 1024 / 1024)
 }
 
 async function splitStopTimes() {
 	console.log("splitting stop times");
 
-	console.log(process.memoryUsage().heapUsed / 1024 / 1024)
 	let trips: Trip[] = JSON.parse(await fs.readFile("data/parsed/trips.json", "utf-8"));
 	let services: Service[] = JSON.parse(await fs.readFile("data/parsed/services.json", "utf-8"));
-	console.log(process.memoryUsage().heapUsed / 1024 / 1024)
 
 	let tripsToServices: Map<string, string> = new Map();
 	trips.map((t) => {
@@ -429,7 +417,6 @@ async function splitStopTimes() {
 	services.map((s) => {
 		serviceDaysMap.set(s.service_id, s.days);
 	});
-	console.log(process.memoryUsage().heapUsed / 1024 / 1024)
 
 	let seps = [];
 	let splitWriteStreams = [];
@@ -482,18 +469,13 @@ async function splitStopTimes() {
 	for (let i=0; i<7; i++) {
 		splitWriteStreams[i].write("]");
 	}
-
-	console.log(process.memoryUsage().heapUsed / 1024 / 1024)
 }
 
 async function mapStopTimes() {
 	console.log("mapping stop times");
 	
 	for (let i = 0; i < 7; i++) {
-		if (global.gc) global.gc();
-
 		let stopTimes: StopTime[] = JSON.parse(await fs.readFile(`data/parsed/stopTimes${i}.json`, "utf-8"));
-		console.log(process.memoryUsage().heapUsed / 1024 / 1024)
 
 		let stopTimesMap: Map<string, StopTime[]> = new Map();
 		stopTimes.map((s) => {
@@ -508,19 +490,15 @@ async function mapStopTimes() {
 		});
 
 		await fs.writeFile(`data/parsed/stopTimesMap${i}.json`, JSON.stringify(Array.from(stopTimesMap.entries())));
-		console.log(process.memoryUsage().heapUsed / 1024 / 1024)
 	}
 }
 
 async function generateTramTrips() {
 	console.log("generating tram trips");
-	if (global.gc) global.gc();
 
-	console.log(process.memoryUsage().heapUsed / 1024 / 1024)
 	let routes: Route[] = JSON.parse(await fs.readFile("data/parsed/routes.json", "utf-8"));
 	let trips: Trip[] = JSON.parse(await fs.readFile("data/parsed/trips.json", "utf-8"));
 	let services: Service[] = JSON.parse(await fs.readFile("data/parsed/services.json", "utf-8"));
-	console.log(process.memoryUsage().heapUsed / 1024 / 1024)
 
 	let servicesMap: Map<string, number[]> = new Map();
 	services.map((s) => {
@@ -528,10 +506,6 @@ async function generateTramTrips() {
 	});
 
 	for (let i = 0; i < 7; i++) {
-		if (global.gc) global.gc();
-
-		console.log(process.memoryUsage().heapUsed / 1024 / 1024)
-
 		let stopTimesMap: Map<string, StopTime[]> = new Map(JSON.parse(await fs.readFile(`data/parsed/stopTimesMap${i}.json`, "utf-8")));
 
 		// todo: aaaa
@@ -565,9 +539,7 @@ async function generateTramTrips() {
 		.sort((a, b) => a.trip_id.localeCompare(b.trip_id))
 
 		await fs.writeFile(`data/parsed/tramTrips${i}.json`, JSON.stringify(tramTrips));
-		console.log(process.memoryUsage().heapUsed / 1024 / 1024)
 	}
-	console.log(process.memoryUsage().heapUsed / 1024 / 1024)
 }
 
 const version = 3;
@@ -576,6 +548,7 @@ export async function parseData(force: boolean) {
 	// console.log("acquiring parse lock")
 	await lock.acquire("parseKey", async () => { // prevent interleaved parsing caused by simultaneous api calls
 		if (force || !existsSync("data/parsed/lastUpdate.json") || (await fs.readFile("data/parsed/lastUpdate.json", "utf-8")) != JSON.stringify({date: await getUpdateDate(), version: version})) {
+			let t0 = new Date().getTime();
 			console.log("parsing data");
 	
 			if (!existsSync("data/gtfs/")) {
@@ -586,7 +559,7 @@ export async function parseData(force: boolean) {
 			}
 		
 			let date = await getUpdateDate();
-			
+
 			await parseLines();
 			await parseStations();
 			await getGtfs(date);
@@ -604,7 +577,8 @@ export async function parseData(force: boolean) {
 		
 			await fs.writeFile(`data/parsed/lastUpdate.json`, JSON.stringify({date: await getUpdateDate(), version: version}));
 		
-			console.log("done");
+			let t1 = new Date().getTime();
+			console.log(`done, ${(t1 - t0) / 1000}s`);
 		}
 	});
 	// console.log("releasing parse lock")

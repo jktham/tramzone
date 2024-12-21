@@ -316,6 +316,5 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 	}
 	trams = trams.sort((a, b) => Number(a.trip_name) - Number(b.trip_name));
 
-	console.log(process.memoryUsage().heapUsed / 1024 / 1024)
 	res.status(200).json(trams);
 }

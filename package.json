@@ -5,7 +5,7 @@
 		"dev": "next dev",
 		"build": "next build",
 		"start": "next start",
-		"parse": "pnpm tsx --max-old-space-size=500 --expose-gc utils/parse.ts"
+		"parse": "pnpm tsx utils/parse.ts"
 	},
 	"dependencies": {
 		"@phosphor-icons/react": "^2.1.7",
