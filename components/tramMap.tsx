@@ -46,7 +46,7 @@ export default function TramMap({onClick, filter, lineData, stationData, tramDat
 	const [geolocation, setGeolocation] = useState<any>();
 	const [focus, setFocus] = useState(null);
 
-	const fps = 30;
+	const fps = 10;
 
 	const overlayRef = useRef(null);
 
