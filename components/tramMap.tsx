@@ -21,6 +21,7 @@ import {lineStyle, locationStyle, stationStyle, tramStyle} from "../utils/mapUti
 import {FocusOverlay, TramDot} from "./symbols";
 import {MapControlBar, MapControl, MapControlGroup} from "./controls";
 import {GpsFix, Minus, NavigationArrow, Plus} from "@phosphor-icons/react";
+import * as Extent from 'ol/extent';
 
 // todo: integrate these somehow
 export const timeOffset = 106400000 * -0;
@@ -54,10 +55,15 @@ export default function TramMap({onClick, filter, lineData, stationData, tramDat
 	const view = new View({
 		center: OlProj.fromLonLat([8.5417, 47.3769]),
 		zoom: 15,
+		maxZoom: 19,
+		minZoom: 13,
+		extent: OlProj.fromLonLat([8.5417-0.15, 47.3769-0.08]).concat(OlProj.fromLonLat([8.5417+0.15, 47.3769+0.08]))
+		//extent: OlProj.fromLonLat([8.41362866027902, 47.32715038662897]).concat(OlProj.fromLonLat([8.629489073922688, 47.4627630523824]))
 	});
 
 	// OnClick function to update the view
 	const centerView = () => {
+		if (!Extent.containsExtent(OlProj.fromLonLat([8.5417-0.15, 47.3769-0.08]).concat(OlProj.fromLonLat([8.5417+0.15, 47.3769+0.08])), userLocation)) return;
 		map.getView().animate({
 			center: userLocation,
 			zoom: 16,
@@ -68,7 +74,7 @@ export default function TramMap({onClick, filter, lineData, stationData, tramDat
 	const increaseZoom = () => {
 		const oldZoom = map.getView().getZoom();
 		map.getView().animate({
-			zoom: (oldZoom + 1),
+			zoom: Math.min(oldZoom + 1, map.getView().getMaxZoom()),
      		duration: 300
 		})
 	}
@@ -76,7 +82,7 @@ export default function TramMap({onClick, filter, lineData, stationData, tramDat
 	const decreaseZoom = () => {
 		const oldZoom = map.getView().getZoom();
 		map.getView().animate({
-			zoom: (oldZoom - 1),
+			zoom: Math.max(oldZoom - 1, map.getView().getMinZoom()),
      		duration: 300
 		})
 	}
@@ -179,6 +185,8 @@ export default function TramMap({onClick, filter, lineData, stationData, tramDat
 		newMap.addOverlay(overlayLayer)
 
 		newMap.on("click", function (e) {
+
+			console.log(OlProj.toLonLat(e.coordinate));
 
 			let candidateFeatures = newMap.getFeaturesAtPixel(e.pixel);
 			let tramCandidate = candidateFeatures.find(f => f.getProperties().type === "tram")
