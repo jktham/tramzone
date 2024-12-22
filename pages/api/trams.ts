@@ -36,6 +36,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
 	// todo: aaaaa night trams only work until 1 hour past midnight??????
 	let today = new Date(time);
+	if (today.getUTCHours() <= 2) {
+		today.setUTCHours(-24, 0, 0, 0); // idk man
+	}
 	today.setUTCHours(-1, 0, 0, 0); // midnight CET
 	let todayLocal = new Date(time + 3600000);
 	let weekday = (todayLocal.getUTCDay() + 6) % 7; // mon=0
