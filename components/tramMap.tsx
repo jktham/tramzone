@@ -24,7 +24,7 @@ import {GpsFix, Minus, NavigationArrow, Plus} from "@phosphor-icons/react";
 import * as Extent from 'ol/extent';
 
 // todo: integrate these somehow
-export const timeOffset = 86400000 * -1;
+export const timeOffset = 86400000 * -2;
 export const histDate = "2024-12-24"; // ex: 2024-12-01 -> set offset to n days ago
 
 // TODO: what is type of target (in onClick) / focus should we even define that?

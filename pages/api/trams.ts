@@ -59,10 +59,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 			exceptionsMap.set(s.service_id, [s]);
 		}
 	});
+	let ignoredExceptions = ["TA+2d600", "TA+a0", "TA+3d600", "TA+rd100", "TA+hV", "TA+ao500"]; // according to gtfs canceled on christmas but according to sbb actually do run?? (todo: figure out idk)
 	tramTrips = tramTrips.filter((t) => {
 		let exceptions = exceptionsMap.get(t.service_id);
 		if (exceptions) {
 			for (let e of exceptions) {
+				if (ignoredExceptions.includes(e.service_id)) {
+					continue;
+				}
 				if (today.getTime() == e.date && e.type == 2) {
 					return false;
 				}
