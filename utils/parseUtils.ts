@@ -72,7 +72,7 @@ function getDateFromString(dateString: string) {
 
 	let date = new Date(0);
 	date.setUTCFullYear(y, m-1, d); // todo: check this is actually correct
-	date.setUTCHours(-1, 0, 0, 0); // midnight CET
+	date.setUTCHours(0, 0, 0, 0); // midnight UTC
 	return date.getTime();
 }
 
@@ -415,94 +415,24 @@ async function parseServiceExceptions(date: string) {
 	writeStream.write("]");
 }
 
-async function splitStopTimes() {
-	console.log("splitting stop times");
-
-	let trips: Trip[] = JSON.parse(await fs.readFile("data/parsed/trips.json", "utf-8"));
-	let services: Service[] = JSON.parse(await fs.readFile("data/parsed/services.json", "utf-8"));
-
-	let tripsToServices: Map<string, string> = new Map();
-	trips.map((t) => {
-		tripsToServices.set(t.trip_id, t.service_id);
-	});
-	let serviceDaysMap: Map<string, number[]> = new Map();
-	services.map((s) => {
-		serviceDaysMap.set(s.service_id, s.days);
-	});
-
-	let seps = [];
-	let splitWriteStreams = [];
-	for (let i=0; i<7; i++) {
-		seps.push("");
-		splitWriteStreams.push(createWriteStream(`data/parsed/stopTimes${i}.json`));
-		splitWriteStreams[i].write("[");
-	}
-
-	let readStream = createReadStream("data/parsed/stopTimes.json");
-	await new Promise<void>((resolve) => {
-		readStream
-		.pipe(parser())
-		.pipe(streamArray())
-		.on("data", (data) => {
-			let stopTime: StopTime = data.value;
-			for (let i = 0; i < 7; i++) {
-				let serviceDays = serviceDaysMap.get(tripsToServices.get(stopTime.trip_id));
-				let offset = 0;
-				let keepNext = false;
-				let keepPrev = false;
-				if (stopTime.arrival >= 86400000 || stopTime.departure >= 86400000) { // >24h gtfs times
-					offset = 6;
-				}
-				if (stopTime.arrival < 86400000 && stopTime.arrival >= 86400000 - 3600000 || stopTime.departure < 86400000 && stopTime.departure >= 86400000 - 3600000) { // close to next day
-					keepNext = true;
-				}
-				if (stopTime.arrival <= 3600000 || stopTime.departure <= 3600000) { // close to prev day
-					keepPrev = true;
-				}
-				if (serviceDays[i] == 1 || serviceDays[(i + offset) % 7] == 1) { // also keep in previous day (if service active)
-					splitWriteStreams[i].write(seps[i] + JSON.stringify(stopTime));
-					seps[i] = ",";
-				}
-				if (serviceDays[i] == 1 && keepPrev) { // force keep for trip overlap
-					splitWriteStreams[(i+6)%7].write(seps[(i+6)%7] + JSON.stringify(stopTime));
-					seps[(i+6)%7] = ",";
-				}
-				if (serviceDays[i] == 1 && keepNext) {
-					splitWriteStreams[(i+1)%7].write(seps[(i+1)%7] + JSON.stringify(stopTime));
-					seps[(i+1)%7] = ",";
-				}
-			}
-		})
-		.on("end", () => {
-			resolve();
-		});
-	});
-
-	for (let i=0; i<7; i++) {
-		splitWriteStreams[i].write("]");
-	}
-}
-
 async function mapStopTimes() {
 	console.log("mapping stop times");
 	
-	for (let i = 0; i < 7; i++) {
-		let stopTimes: StopTime[] = JSON.parse(await fs.readFile(`data/parsed/stopTimes${i}.json`, "utf-8"));
+	let stopTimes: StopTime[] = JSON.parse(await fs.readFile(`data/parsed/stopTimes.json`, "utf-8"));
 
-		let stopTimesMap: Map<string, StopTime[]> = new Map();
-		stopTimes.map((s) => {
-			if (stopTimesMap.has(s.trip_id)) {
-				stopTimesMap.set(s.trip_id, [s, ...stopTimesMap.get(s.trip_id)]);
-			} else {
-				stopTimesMap.set(s.trip_id, [s]);
-			}
-		});
-		stopTimesMap.forEach((v, k) => {
-			stopTimesMap.set(k, v.sort((a, b) => a.stop_sequence - b.stop_sequence));
-		});
+	let stopTimesMap: Map<string, StopTime[]> = new Map();
+	stopTimes.map((s) => {
+		if (stopTimesMap.has(s.trip_id)) {
+			stopTimesMap.set(s.trip_id, [s, ...stopTimesMap.get(s.trip_id)]);
+		} else {
+			stopTimesMap.set(s.trip_id, [s]);
+		}
+	});
+	stopTimesMap.forEach((v, k) => {
+		stopTimesMap.set(k, v.sort((a, b) => a.stop_sequence - b.stop_sequence));
+	});
 
-		await fs.writeFile(`data/parsed/stopTimesMap${i}.json`, JSON.stringify(Array.from(stopTimesMap.entries())));
-	}
+	await fs.writeFile(`data/parsed/stopTimesMap.json`, JSON.stringify(Array.from(stopTimesMap.entries())));
 }
 
 async function generateTramTrips() {
@@ -517,41 +447,102 @@ async function generateTramTrips() {
 		servicesMap.set(s.service_id, s.days);
 	});
 
-	for (let i = 0; i < 7; i++) {
-		let stopTimesMap: Map<string, StopTime[]> = new Map(JSON.parse(await fs.readFile(`data/parsed/stopTimesMap${i}.json`, "utf-8")));
+	let stopTimesMap: Map<string, StopTime[]> = new Map(JSON.parse(await fs.readFile(`data/parsed/stopTimesMap.json`, "utf-8")));
 
-		// todo: aaaa
-		let tramTrips: TramTrip[] = trips.map((t) => {
-			let r: Route = routes.find((r) => r.route_id == t.route_id);
-			let s: StopTime[] = stopTimesMap.get(t.trip_id);
-			if (!s) { // not in service day i
-				return null;
+	// todo: aaaa
+	let tramTrips: TramTrip[] = trips.map((t) => {
+		let r: Route = routes.find((r) => r.route_id == t.route_id);
+		let s: StopTime[] = stopTimesMap.get(t.trip_id);
+		return {
+			trip_id: t.trip_id,
+			trip_name: t.name,
+			headsign: t.headsign,
+			direction: t.direction,
+			route_id: r.route_id,
+			route_name: r.name,
+			service_id: t.service_id,
+			service_days: servicesMap.get(t.service_id),
+			stops: s.map((s) => {
+				return {
+					stop_id: s.stop_id,
+					stop_sequence: s.stop_sequence,
+					arrival: s.arrival,
+					departure: s.departure,
+				};
+			}),
+		};
+	})
+	.filter((t) => t != null)
+	.sort((a, b) => a.direction - b.direction)
+	.sort((a, b) => a.trip_id.localeCompare(b.trip_id))
+
+	await fs.writeFile(`data/parsed/tramTrips.json`, JSON.stringify(tramTrips));
+}
+
+export function getDatestring(date: Date) {
+	return `${date.getFullYear()}-${("0" + (date.getMonth()+1)).slice(-2)}-${("0" + date.getDate()).slice(-2)}`;
+}
+
+async function bakeTramTrips() {
+	console.log("baking tram trips")
+
+	let today = new Date();
+	today.setUTCHours(0, 0, 0, 0);
+
+	let tramTrips: TramTrip[] = JSON.parse(await fs.readFile("data/parsed/tramTrips.json", "utf-8"));
+	let services: Service[] = JSON.parse(await fs.readFile(`data/parsed/services.json`, "utf-8"));
+	let serviceExceptions: ServiceException[] = JSON.parse(await fs.readFile(`data/parsed/serviceExceptions.json`, "utf-8"));
+
+	let servicesMap: Map<string, Service> = new Map();
+	services.map((s) => {
+		servicesMap.set(s.service_id, s);
+	});
+	let exceptionsMap: Map<string, ServiceException[]> = new Map();
+	serviceExceptions.map((s) => {
+		if (exceptionsMap.has(s.service_id)) {
+			exceptionsMap.set(s.service_id, [s, ...exceptionsMap.get(s.service_id)]);
+		} else {
+			exceptionsMap.set(s.service_id, [s]);
+		}
+	});
+
+	for (let i=0; i<5; i++) {
+		let date = getDatestring(today);
+		let weekday = (today.getUTCDay() + 6) % 7;
+
+		let tramTripsToday = tramTrips.filter((t) => {
+			let exceptions = exceptionsMap.get(t.service_id);
+			if (exceptions) {
+				for (let e of exceptions) {
+					if (today.getTime() == e.date && e.type == 2) {
+						return false;
+					}
+					if (today.getTime() == e.date && e.type == 1) { // this actually works now yay
+						return true;
+					}
+				}
 			}
-			return {
-				trip_id: t.trip_id,
-				trip_name: t.name,
-				headsign: t.headsign,
-				direction: t.direction,
-				route_id: r.route_id,
-				route_name: r.name,
-				service_id: t.service_id,
-				service_days: servicesMap.get(t.service_id),
-				stops: s.map((s) => {
-					return {
-						stop_id: s.stop_id,
-						stop_sequence: s.stop_sequence,
-						arrival: s.arrival,
-						departure: s.departure,
-					};
-				}),
-			};
-		})
-		.filter((t) => t != null)
-		.sort((a, b) => a.direction - b.direction)
-		.sort((a, b) => a.trip_id.localeCompare(b.trip_id))
 
-		await fs.writeFile(`data/parsed/tramTrips${i}.json`, JSON.stringify(tramTrips));
+			let service = servicesMap.get(t.service_id);
+			let offset = 0
+			for (let s of t.stops) { // todo: keep overlap on both days
+				if (s.arrival >= 86400000 || s.departure >= 86400000) { // only supports next day for now
+					offset = -1;
+					// s.arrival = s.arrival -= 86400000;
+					// s.departure = s.departure -= 86400000;
+				}
+			}
+			if (today.getTime() >= service.start && today.getTime() <= service.end) { // does not consider offset but eh
+				return t.service_days[(weekday + offset + 7) % 7] == 1;
+			}
+			return false;
+		});
+
+		await fs.writeFile(`data/parsed/tramTrips_${date}.json`, JSON.stringify(tramTripsToday));
+
+		today.setDate(today.getDate()+1);
 	}
+
 }
 
 const version = 3;
@@ -569,6 +560,11 @@ export async function parseData(force: boolean) {
 			if (!existsSync("data/parsed/")) {
 				await fs.mkdir("data/parsed/");
 			}
+
+			let old = await fs.readdir("data/parsed/");
+			for (let f of old) {
+				await fs.rm(`data/parsed/${f}`, {recursive: true, force: true});
+			}
 		
 			let date = await getUpdateDate();
 
@@ -583,9 +579,9 @@ export async function parseData(force: boolean) {
 			await parseServices(date);
 			await filterServiceExceptions(date);
 			await parseServiceExceptions(date);
-			await splitStopTimes();
 			await mapStopTimes();
 			await generateTramTrips();
+			await bakeTramTrips();
 		
 			await fs.writeFile(`data/parsed/lastUpdate.json`, JSON.stringify({date: await getUpdateDate(), version: version}));
 		

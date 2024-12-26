@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import fs from "node:fs/promises";
 import { Service, ServiceException, Station, StopStatus, Tram, TramTrip, TripStatus, TripUpdate, Stop } from "../../utils/types";
-import { parseData } from "../../utils/parseUtils"
+import { getDatestring, parseData } from "../../utils/parseUtils"
 import { existsSync } from "node:fs";
 import { updateTramProgress } from "../../utils/dataUtils";
 
@@ -16,7 +16,7 @@ type QueryParams = {
 
 type ResponseData = Tram[] | string;
 
-const updateCount = 10; // number of past updates to average
+const updateCount = 4; // number of past updates to average
 let updateIndex = 0;
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<ResponseData>) {
@@ -36,60 +36,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
 	// todo: aaaaa night trams only work until 1 hour past midnight??????
 	let today = new Date(time);
-	if (today.getUTCHours() <= 2) {
-		today.setUTCHours(-24, 0, 0, 0); // idk man
+	today.setUTCHours(0, 0, 0, 0); // midnight UTC
+
+	let tramTrips: TramTrip[] = [];
+	let date = getDatestring(today);
+
+	if (existsSync(`data/parsed/tramTrips_${date}.json`)) {
+		tramTrips = JSON.parse(await fs.readFile(`data/parsed/tramTrips_${date}.json`, "utf-8"));
+	} else {
+		console.log(`no baked trips for ${date}`)
 	}
-	today.setUTCHours(-1, 0, 0, 0); // midnight CET
-	let todayLocal = new Date(time + 3600000);
-	let weekday = (todayLocal.getUTCDay() + 6) % 7; // mon=0
-
-	let tramTrips: TramTrip[] = JSON.parse(await fs.readFile(`data/parsed/tramTrips${weekday}.json`, "utf-8"));
-	let services: Service[] = JSON.parse(await fs.readFile(`data/parsed/services.json`, "utf-8"));
-	let serviceExceptions: ServiceException[] = JSON.parse(await fs.readFile(`data/parsed/serviceExceptions.json`, "utf-8"));
-
-	let servicesMap: Map<string, Service> = new Map();
-	services.map((s) => {
-		servicesMap.set(s.service_id, s);
-	});
-	let exceptionsMap: Map<string, ServiceException[]> = new Map();
-	serviceExceptions.map((s) => {
-		if (exceptionsMap.has(s.service_id)) {
-			exceptionsMap.set(s.service_id, [s, ...exceptionsMap.get(s.service_id)]);
-		} else {
-			exceptionsMap.set(s.service_id, [s]);
-		}
-	});
-	let ignoredExceptions = ["TA+2d600", "TA+a0", "TA+3d600", "TA+rd100", "TA+hV", "TA+ao500"]; // according to gtfs canceled on christmas but according to sbb actually do run?? (todo: figure out idk)
-	tramTrips = tramTrips.filter((t) => {
-		let exceptions = exceptionsMap.get(t.service_id);
-		if (exceptions) {
-			for (let e of exceptions) {
-				if (ignoredExceptions.includes(e.service_id)) {
-					continue;
-				}
-				if (today.getTime() == e.date && e.type == 2) {
-					return false;
-				}
-				if (today.getTime() == e.date && e.type == 1) {
-					return true;
-				}
-			}
-		}
-
-		let service = servicesMap.get(t.service_id);
-		let offset = 0
-		for (let s of t.stops) {
-			if (s.arrival >= 86400000 || s.departure >= 86400000) { // only supports next day for now
-				offset = 6;
-				// s.arrival = s.arrival % 86400000;
-				// s.departure = s.departure % 86400000;
-			}
-		}
-		if (today.getTime() >= service.start && today.getTime() <= service.end) { // does not consider offset but eh
-			return t.service_days[(weekday + offset) % 7] == 1
-		}
-		return false;
-	});
 
 	let realtime: any = query.static ? {"Entity": []} : null;
 
@@ -97,7 +53,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 	if (!realtime) {
 		if (existsSync("data/gtfs/realtime.json")) {
 			let cachedRealtime = JSON.parse(await fs.readFile("data/gtfs/realtime.json", "utf-8"));
-			if (cachedRealtime.time && time - cachedRealtime.time < 10 * 1000) {
+			if (cachedRealtime.time && Math.abs(time - cachedRealtime.time) < 10 * 1000) {
 				console.log("using cached rt");
 				realtime = cachedRealtime.data;
 			}
@@ -232,8 +188,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 					stop_name: station.name,
 					stop_sequence: s.stop_sequence,
 					stop_status: u?.stop_status || "scheduled",
-					arrival: today.getTime() + s.arrival,
-					departure: today.getTime() + s.departure,
+					arrival: today.getTime() + s.arrival - 3600000, // convert to CET
+					departure: today.getTime() + s.departure - 3600000,
 					arrival_delay: u?.arrival_delay || 0,
 					departure_delay: u?.departure_delay || 0,
 					pred_arrival: 0,
