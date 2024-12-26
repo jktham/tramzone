@@ -29,18 +29,30 @@ async function getUpdateDate() {
 
 	let date = new Date(Math.max(monday.getTime(), thursday.getTime()));
 	let dateString = `${date.getFullYear()}-${("0" + (date.getMonth()+1)).slice(-2)}-${("0" + date.getDate()).slice(-2)}`;
-
-	return dateString;
-	// try {
-	// 	let check = await fetch(`https://opentransportdata.swiss/de/dataset/timetable-2025-gtfs2020/resource_permalink/gtfs_fp2025_${dateString}.zip`, {method: "HEAD"});
-	// 	if (check.ok) {
-	// 		return dateString
-	// 	}
-	// } catch {
+	try {
+		let check = await fetch(`https://opentransportdata.swiss/de/dataset/timetable-2025-gtfs2020/resource_permalink/gtfs_fp2025_${dateString}.zip`, {method: "HEAD"});
+		if (check.ok) {
+			return dateString
+		}
+	} catch {
 		
-	// }
-	// console.log("new data invalid, fallback to 2024-12-12")
-	// return "2024-12-12";
+	}
+
+	date = new Date(Math.min(monday.getTime(), thursday.getTime()));
+	dateString = `${date.getFullYear()}-${("0" + (date.getMonth()+1)).slice(-2)}-${("0" + date.getDate()).slice(-2)}`;
+	console.log(`invalid gtfs, trying prev date ${dateString}`)
+	try {
+		let check = await fetch(`https://opentransportdata.swiss/de/dataset/timetable-2025-gtfs2020/resource_permalink/gtfs_fp2025_${dateString}.zip`, {method: "HEAD"});
+		if (check.ok) {
+			return dateString
+		}
+	} catch {
+		
+	}
+
+	dateString = "2024-12-23";
+	console.log(`invalid gtfs, fallback to ${dateString}`)
+	return dateString;
 }
 
 function getTimeFromString(timeString: string) {
