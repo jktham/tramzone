@@ -480,7 +480,7 @@ async function generateTramTrips() {
 }
 
 export function getDatestring(date: Date) {
-	return `${date.getFullYear()}-${("0" + (date.getMonth()+1)).slice(-2)}-${("0" + date.getDate()).slice(-2)}`;
+	return `${date.getUTCFullYear()}-${("0" + (date.getUTCMonth()+1)).slice(-2)}-${("0" + date.getUTCDate()).slice(-2)}`;
 }
 
 async function bakeTramTrips() {

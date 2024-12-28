@@ -36,10 +36,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
 	// todo: aaaaa night trams only work until 1 hour past midnight??????
 	let today = new Date(time);
-	today.setUTCHours(0, 0, 0, 0); // midnight UTC
 
 	let tramTrips: TramTrip[] = [];
 	let date = getDatestring(today);
+
+	if (today.getUTCHours() == 23) {
+		date = getDatestring(new Date(today.getTime() + 3600000)); // (?)
+	}
+	if (today.getUTCHours() < 2) {
+		today.setUTCHours(-24, 0, 0, 0);
+	}
+	today.setUTCHours(0, 0, 0, 0); // midnight UTC
 
 	if (existsSync(`data/parsed/tramTrips_${date}.json`)) {
 		tramTrips = JSON.parse(await fs.readFile(`data/parsed/tramTrips_${date}.json`, "utf-8"));
