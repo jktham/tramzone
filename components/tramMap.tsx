@@ -22,6 +22,7 @@ import {FocusOverlay, TramDot} from "./symbols";
 import {MapControlBar, MapControl, MapControlGroup} from "./controls";
 import {GpsFix, Minus, NavigationArrow, Plus} from "@phosphor-icons/react";
 import * as Extent from 'ol/extent';
+import {DblClickDragZoom, defaults as defaultInteractions} from 'ol/interaction.js';
 
 // todo: integrate these somehow
 export const timeOffset = 86400000 * -0;
@@ -63,7 +64,7 @@ export default function TramMap({onClick, filter, lineData, stationData, tramDat
 
 	// OnClick function to update the view
 	const centerView = () => {
-		if (!Extent.containsExtent(OlProj.fromLonLat([8.5417-0.15, 47.3769-0.08]).concat(OlProj.fromLonLat([8.5417+0.15, 47.3769+0.08])), userLocation)) return;
+		if (!Extent.containsCoordinate(OlProj.fromLonLat([8.5417-0.15, 47.3769-0.08]).concat(OlProj.fromLonLat([8.5417+0.15, 47.3769+0.08])), userLocation)) return;
 		map.getView().animate({
 			center: userLocation,
 			zoom: 16,
@@ -179,7 +180,8 @@ export default function TramMap({onClick, filter, lineData, stationData, tramDat
 				collapsible: false,
 				collapsed: false,
 				collapseLabel: ""
-			})]
+			})],
+			interactions: defaultInteractions().extend([new DblClickDragZoom({delta: -0.01})]),
 		});
 
 		newMap.addOverlay(overlayLayer)

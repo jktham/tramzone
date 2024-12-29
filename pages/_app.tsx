@@ -42,7 +42,7 @@ function ThemeController({}) {
 		const s = new Date()
 		const hours = s.getHours()
 		//console.log(hours)
-		if (hours >= 20 || hours <= 6 ) {
+		if (hours >= 18 || hours <= 6 ) {
 			setTheme("dark")
 			//console.log("it is night")
 		} else {
