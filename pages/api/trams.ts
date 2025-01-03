@@ -20,8 +20,6 @@ const updateCount = 4; // number of past updates to average
 let updateIndex = 0;
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<ResponseData>) {
-	await parseData(false)
-
 	let query: QueryParams = {
 		active: req.query.active === "true" || false,
 		line: (req.query.line && req.query.line.toString()) || "",
@@ -52,6 +50,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 		tramTrips = JSON.parse(await fs.readFile(`data/parsed/tramTrips_${date}.json`, "utf-8"));
 	} else {
 		console.log(`no baked trips for ${date}`)
+		await parseData(false);
+		if (existsSync(`data/parsed/tramTrips_${date}.json`)) {
+			tramTrips = JSON.parse(await fs.readFile(`data/parsed/tramTrips_${date}.json`, "utf-8"));
+		} else {
+			await parseData(true);
+			if (existsSync(`data/parsed/tramTrips_${date}.json`)) {
+				tramTrips = JSON.parse(await fs.readFile(`data/parsed/tramTrips_${date}.json`, "utf-8"));
+			}
+		}
 	}
 
 	let realtime: any = query.static ? {"Entity": []} : null;
