@@ -38,7 +38,20 @@ async function getUpdateDate() {
 		
 	}
 
-	date = new Date(Math.min(monday.getTime(), thursday.getTime()));
+	date = new Date(Math.max(monday.getTime(), thursday.getTime()));
+	date.setDate(date.getDate()+1); // check next day in case of publishing issue at opentransportdata
+	dateString = `${date.getFullYear()}-${("0" + (date.getMonth()+1)).slice(-2)}-${("0" + date.getDate()).slice(-2)}`;
+	console.log(`invalid gtfs, trying prev date ${dateString}`)
+	try {
+		let check = await fetch(`https://opentransportdata.swiss/de/dataset/timetable-2025-gtfs2020/resource_permalink/gtfs_fp2025_${dateString}.zip`, {method: "HEAD"});
+		if (check.ok) {
+			return dateString
+		}
+	} catch {
+		
+	}
+
+	date = new Date(Math.min(monday.getTime(), thursday.getTime())); // try prev scheduled update
 	dateString = `${date.getFullYear()}-${("0" + (date.getMonth()+1)).slice(-2)}-${("0" + date.getDate()).slice(-2)}`;
 	console.log(`invalid gtfs, trying prev date ${dateString}`)
 	try {
