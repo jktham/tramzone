@@ -10,6 +10,10 @@ let AsyncLock = require("async-lock");
 import { parser } from 'stream-json';
 import { streamArray } from 'stream-json/streamers/StreamArray';
 
+export const ENDPOINT_GTFS = "https://data.opentransportdata.swiss/de/dataset/timetable-2025-gtfs2020";
+export const ENDPOINT_RT = "https://api.opentransportdata.swiss/la/gtfs-rt?format=JSON";
+export const ENDPOINT_HIST = "https://data.opentransportdata.swiss/en/dataset/istdaten";
+
 async function getUpdateDate() {
 	// new gtfs data every monday and thursday (static at 10:00, rt at 15:00)
 	let updateTime = new Date();
@@ -30,7 +34,7 @@ async function getUpdateDate() {
 	let date = new Date(Math.max(monday.getTime(), thursday.getTime()));
 	let dateString = `${date.getFullYear()}-${("0" + (date.getMonth()+1)).slice(-2)}-${("0" + date.getDate()).slice(-2)}`;
 	try {
-		let check = await fetch(`https://opentransportdata.swiss/de/dataset/timetable-2025-gtfs2020/resource_permalink/gtfs_fp2025_${dateString}.zip`, {method: "HEAD"});
+		let check = await fetch(`${ENDPOINT_GTFS}/resource_permalink/gtfs_fp2025_${dateString}.zip`, {method: "HEAD"});
 		if (check.ok) {
 			return dateString
 		}
@@ -43,7 +47,7 @@ async function getUpdateDate() {
 	dateString = `${date.getFullYear()}-${("0" + (date.getMonth()+1)).slice(-2)}-${("0" + date.getDate()).slice(-2)}`;
 	console.log(`invalid gtfs, trying prev date ${dateString}`)
 	try {
-		let check = await fetch(`https://opentransportdata.swiss/de/dataset/timetable-2025-gtfs2020/resource_permalink/gtfs_fp2025_${dateString}.zip`, {method: "HEAD"});
+		let check = await fetch(`${ENDPOINT_GTFS}/resource_permalink/gtfs_fp2025_${dateString}.zip`, {method: "HEAD"});
 		if (check.ok) {
 			return dateString
 		}
@@ -55,7 +59,7 @@ async function getUpdateDate() {
 	dateString = `${date.getFullYear()}-${("0" + (date.getMonth()+1)).slice(-2)}-${("0" + date.getDate()).slice(-2)}`;
 	console.log(`invalid gtfs, trying prev date ${dateString}`)
 	try {
-		let check = await fetch(`https://opentransportdata.swiss/de/dataset/timetable-2025-gtfs2020/resource_permalink/gtfs_fp2025_${dateString}.zip`, {method: "HEAD"});
+		let check = await fetch(`${ENDPOINT_GTFS}/resource_permalink/gtfs_fp2025_${dateString}.zip`, {method: "HEAD"});
 		if (check.ok) {
 			return dateString
 		}
@@ -198,7 +202,7 @@ async function getGtfs(date: string) {
 		}
 
 		console.log("getting new gtfs data: ", date);
-		let gtfs_static = await fetch(`https://opentransportdata.swiss/de/dataset/timetable-2025-gtfs2020/resource_permalink/gtfs_fp2025_${date}.zip`);
+		let gtfs_static = await fetch(`${ENDPOINT_GTFS}/resource_permalink/gtfs_fp2025_${date}.zip`);
 		// @ts-ignore: dumb error
 		let str = stream.Readable.fromWeb(gtfs_static.body);
 
@@ -213,7 +217,7 @@ async function getGtfs(date: string) {
 
 	// // get realtime data (test)
 	// console.log("getting gtfs-rt data");
-	// let gtfs_realtime = await fetch("https://api.opentransportdata.swiss/gtfsrt2020?format=JSON", {
+	// let gtfs_realtime = await fetch(ENDPOINT_RT, {
 	// 	headers: {
 	// 		Authorization: process.env.KEY_RT,
 	// 		"Accept-Encoding": "gzip, deflate",
@@ -629,7 +633,7 @@ function getDateTimeFromStringHist(dateTimeString: string) {
 
 export async function getHist(date: string) {
 	console.log("getting historical data: ", date);
-	let hist = await fetch(`https://opentransportdata.swiss/en/dataset/istdaten/resource_permalink/${date}_istdaten.csv`);
+	let hist = await fetch(`${ENDPOINT_HIST}/resource_permalink/${date}_istdaten.csv`);
 	// @ts-ignore: dumb error
 	let str = stream.Readable.fromWeb(hist.body);
 	await fs.writeFile(`data/hist/${date}.csv`, str);
