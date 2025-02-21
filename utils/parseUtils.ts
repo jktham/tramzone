@@ -10,7 +10,7 @@ let AsyncLock = require("async-lock");
 import { parser } from 'stream-json';
 import { streamArray } from 'stream-json/streamers/StreamArray';
 
-export const ENDPOINT_GTFS = "https://data.opentransportdata.swiss/de/dataset/timetable-2025-gtfs2020";
+export const ENDPOINT_GTFS = "https://opentransportdata.swiss/en/dataset/timetable-2025-gtfs2020"; //todo: switch to new endpoint if this breaks
 export const ENDPOINT_RT = "https://api.opentransportdata.swiss/la/gtfs-rt?format=JSON";
 export const ENDPOINT_HIST = "https://data.opentransportdata.swiss/en/dataset/istdaten";
 
