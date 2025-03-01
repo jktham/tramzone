@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import fs from "node:fs/promises"
-import { parseData } from "../../utils/parseUtils"
+import { ENDPOINT_SA, KEY_SA, parseData } from "../../utils/parseUtils"
 import { existsSync } from 'node:fs'
 import { ServiceAlert } from '../../utils/types'
 
@@ -9,9 +9,9 @@ type ResponseData = ServiceAlert[] | string
 export default async function handler(req: NextApiRequest, res: NextApiResponse<ResponseData>) {
 	await parseData(false);
 
-	let gtfs_serviceAlerts = fetch("https://api.opentransportdata.swiss/gtfs-sa?format=JSON", {
+	let gtfs_serviceAlerts = fetch(ENDPOINT_SA, {
 		headers: {
-			Authorization: process.env.KEY_SA,
+			Authorization: KEY_SA,
 			"Accept-Encoding": "gzip, deflate",
 		},
 	}).then((res) => res.json());

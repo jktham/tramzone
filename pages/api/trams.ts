@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import fs from "node:fs/promises";
 import { Service, ServiceException, Station, StopStatus, Tram, TramTrip, TripStatus, TripUpdate, Stop } from "../../utils/types";
-import { getDatestring, parseData, ENDPOINT_RT } from "../../utils/parseUtils"
+import { getDatestring, parseData, ENDPOINT_RT, KEY_RT } from "../../utils/parseUtils"
 import { existsSync } from "node:fs";
 import { updateTramProgress } from "../../utils/dataUtils";
 
@@ -80,7 +80,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 			console.log("getting fresh rt");
 			let gtfs_realtime = fetch(ENDPOINT_RT, {
 				headers: {
-					Authorization: process.env.KEY_RT || process.env.KEY_RT_PUBLIC,
+					Authorization: KEY_RT,
 					"Accept-Encoding": "gzip, deflate",
 				},
 				signal: AbortSignal.timeout(30 * 1000),
