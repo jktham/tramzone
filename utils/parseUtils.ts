@@ -13,7 +13,7 @@ import { streamArray } from 'stream-json/streamers/StreamArray';
 export const KEY_RT = process.env.KEY_RT || "57c5dbbbf1fe4d000100001842c323fa9ff44fbba0b9b925f0c052d1"; // public default key dw
 export const KEY_SA = process.env.KEY_SA;
 
-export const ENDPOINT_GTFS = "https://opentransportdata.swiss/en/dataset/timetable-2025-gtfs2020"; // todo: switch to new endpoint if this breaks
+export const ENDPOINT_GTFS = "https://data.opentransportdata.swiss/dataset/timetable-2025-gtfs2020/permalink";
 export const ENDPOINT_HIST = "https://data.opentransportdata.swiss/en/dataset/istdaten";
 export const ENDPOINT_RT = "https://api.opentransportdata.swiss/la/gtfs-rt?format=JSON";
 export const ENDPOINT_SA = "https://api.opentransportdata.swiss/la/gtfs-sa?format=JSON";
@@ -37,42 +37,6 @@ async function getUpdateDate() {
 
 	let date = new Date(Math.max(monday.getTime(), thursday.getTime()));
 	let dateString = `${date.getFullYear()}-${("0" + (date.getMonth()+1)).slice(-2)}-${("0" + date.getDate()).slice(-2)}`;
-	try {
-		let check = await fetch(`${ENDPOINT_GTFS}/resource_permalink/gtfs_fp2025_${dateString}.zip`, {method: "HEAD"});
-		if (check.ok) {
-			return dateString
-		}
-	} catch {
-		
-	}
-
-	date = new Date(Math.max(monday.getTime(), thursday.getTime()));
-	date.setDate(date.getDate()+1); // check next day in case of publishing issue at opentransportdata
-	dateString = `${date.getFullYear()}-${("0" + (date.getMonth()+1)).slice(-2)}-${("0" + date.getDate()).slice(-2)}`;
-	console.log(`invalid gtfs, trying prev date ${dateString}`)
-	try {
-		let check = await fetch(`${ENDPOINT_GTFS}/resource_permalink/gtfs_fp2025_${dateString}.zip`, {method: "HEAD"});
-		if (check.ok) {
-			return dateString
-		}
-	} catch {
-		
-	}
-
-	date = new Date(Math.min(monday.getTime(), thursday.getTime())); // try prev scheduled update
-	dateString = `${date.getFullYear()}-${("0" + (date.getMonth()+1)).slice(-2)}-${("0" + date.getDate()).slice(-2)}`;
-	console.log(`invalid gtfs, trying prev date ${dateString}`)
-	try {
-		let check = await fetch(`${ENDPOINT_GTFS}/resource_permalink/gtfs_fp2025_${dateString}.zip`, {method: "HEAD"});
-		if (check.ok) {
-			return dateString
-		}
-	} catch {
-		
-	}
-
-	dateString = "2024-12-23";
-	console.log(`invalid gtfs, fallback to ${dateString}`)
 	return dateString;
 }
 
@@ -206,7 +170,7 @@ async function getGtfs(date: string) {
 		}
 
 		console.log("getting new gtfs data: ", date);
-		let gtfs_static = await fetch(`${ENDPOINT_GTFS}/resource_permalink/gtfs_fp2025_${date}.zip`);
+		let gtfs_static = await fetch(ENDPOINT_GTFS); // oh wow the redirect actually works now
 		// @ts-ignore: dumb error
 		let str = stream.Readable.fromWeb(gtfs_static.body);
 
