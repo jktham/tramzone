@@ -196,14 +196,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 			stops: t.stops.map((s) => {
 				let station: Station = stationsMap.get(Number(s.stop_id.split(":")[0]));
 				let u = update?.stops?.find((us) => us.stop_id == s.stop_id);
+				let offset = 2 * 3600000; // todo: switch to cest automatically
 				return {
 					stop_id: s.stop_id,
 					stop_diva: station.diva,
 					stop_name: station.name,
 					stop_sequence: s.stop_sequence,
 					stop_status: u?.stop_status || "scheduled",
-					arrival: today.getTime() + s.arrival - 3600000, // convert to CET
-					departure: today.getTime() + s.departure - 3600000,
+					arrival: today.getTime() + s.arrival - offset, // convert to CET
+					departure: today.getTime() + s.departure - offset,
 					arrival_delay: u?.arrival_delay || 0,
 					departure_delay: u?.departure_delay || 0,
 					pred_arrival: 0,
