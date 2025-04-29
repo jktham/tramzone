@@ -2,6 +2,9 @@ import {Tram, Line} from "./types";
 import Style from "ol/style/Style";
 import {Circle, Fill, Stroke} from "ol/style";
 import {Feature} from "ol";
+import * as Extent from "ol/extent";
+import * as OlProj from "ol/proj";
+import {Coordinate} from "ol/coordinate";
 
 export function grayscaleLayer(context) {
 	let canvas = context.canvas;
@@ -122,6 +125,10 @@ export function getTramLocation(tram: Tram, lines: Line[]) {
 	return try_prev || [0, 0];
 }
 
+export function userInZurich(userLocation : Coordinate) {
+	return Extent.containsCoordinate(OlProj.fromLonLat([8.5417-0.15, 47.3769-0.08]).concat(OlProj.fromLonLat([8.5417+0.15, 47.3769+0.08])), userLocation)
+}
+
 // STYLES
 
 export const tramStyle = (filter) => (feature: Feature) => (!filter?.trams || filter.trams === "ALL" || Number(feature.getProperties().name) === filter.trams) ? [
@@ -196,7 +203,7 @@ export const locationStyle = (filter) => (feature: Feature) => [
 	}),
 	new Style({
 		image: new Circle({
-			radius: 9.5,
+			radius: 19.5,
 			fill: new Fill({
 				color: "rgba(45,110,133,0.3)",
 			})

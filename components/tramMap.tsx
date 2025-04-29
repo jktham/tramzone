@@ -17,12 +17,12 @@ import {Point} from "ol/geom";
 import {Coordinate} from "ol/coordinate";
 import {Attribution} from "ol/control";
 import {useTheme} from "next-themes";
-import {lineStyle, locationStyle, stationStyle, tramStyle} from "../utils/mapUtils";
+import {lineStyle, locationStyle, stationStyle, tramStyle, userInZurich} from "../utils/mapUtils";
 import {FocusOverlay, TramDot} from "./symbols";
 import {MapControlBar, MapControl, MapControlGroup} from "./controls";
-import {GpsFix, Minus, NavigationArrow, Plus} from "@phosphor-icons/react";
-import * as Extent from 'ol/extent';
-import {DblClickDragZoom, defaults as defaultInteractions} from 'ol/interaction.js';
+import {Acorn, GpsFix, Minus, NavigationArrow, Plus} from "@phosphor-icons/react";
+import {} from 'ol/interaction.js';
+import {DragRotateAndZoom, DblClickDragZoom, defaults as defaultInteractions} from "ol/interaction";
 
 // todo: integrate these somehow
 export const timeOffset = 86400000 * -0;
@@ -43,10 +43,12 @@ export default function TramMap({onClick, filter, lineData, stationData, tramDat
 	const [userLocationLayer, setUserLocationLayer] = useState<VectorLayer>();
 	const [overlayLayer, setOverlayLayer] = useState<Overlay>();
 
-	const [userLocation, setUserLocation] = useState<Coordinate>(OlProj.fromLonLat([8.541937, 47.363062]));
+	const [userLocation, setUserLocation] = useState<Coordinate>(OlProj.fromLonLat([0, 0]));
 	const [prevTramData, setPrevTramData] = useState<Tram[]>();
 	const [geolocation, setGeolocation] = useState<any>();
 	const [focus, setFocus] = useState(null);
+
+	const [rotation, setRotation] = useState(0);
 
 	const fps = 10;
 
@@ -64,7 +66,7 @@ export default function TramMap({onClick, filter, lineData, stationData, tramDat
 
 	// OnClick function to update the view
 	const centerView = () => {
-		if (!Extent.containsCoordinate(OlProj.fromLonLat([8.5417-0.15, 47.3769-0.08]).concat(OlProj.fromLonLat([8.5417+0.15, 47.3769+0.08])), userLocation)) return;
+		if (!userInZurich(userLocation)) return;
 		map.getView().animate({
 			center: userLocation,
 			zoom: 16,
@@ -181,7 +183,7 @@ export default function TramMap({onClick, filter, lineData, stationData, tramDat
 				collapsed: false,
 				collapseLabel: ""
 			})],
-			interactions: defaultInteractions().extend([new DblClickDragZoom({delta: -0.01})]),
+			interactions: defaultInteractions().extend([new DblClickDragZoom({delta: -0.01}), new DragRotateAndZoom()]),
 		});
 
 		newMap.addOverlay(overlayLayer)
@@ -270,16 +272,30 @@ export default function TramMap({onClick, filter, lineData, stationData, tramDat
 		};
 	}, [focus]);
 
+	// rotation
+	useEffect(() => {
+
+		let view = map?.getView();
+
+		//if (view?.getAnimating() || view?.getInteracting()) return;
+
+		let x = 2 * Math.PI;
+		let a = view?.getRotation() ?? 0;
+		a = ((a % x) + x) % x
+		if (a > Math.PI) a -= 2 * Math.PI;
+		setRotation(a);
+	}, [map?.getView()?.getRotation(), map?.getView()?.getAnimating(), map?.getView()?.getInteracting()]);
+
 	return (
 		<>
 			<div className={styles.controls}>
-				<MapControlBar>
-					<MapControl onClick={restoreRotation}><div style={{height: "16px", transform: "rotate(45deg)"}}><NavigationArrow color={"var(--FG1)"} weight={"bold"} size={16}></NavigationArrow></div></MapControl>
+				<MapControlBar style={{transition: ".3s"}}>
 					<MapControlGroup fillColor={"var(--BG2)"}>
 						<MapControl onClick={increaseZoom}><Plus color={"var(--FG1)"} weight={"bold"} size={16}></Plus></MapControl>
 						<MapControl onClick={decreaseZoom}><Minus color={"var(--FG1)"} weight={"bold"} size={16}></Minus></MapControl>
 					</MapControlGroup>
-					<MapControl onClick={centerView}><GpsFix color={"var(--LOC)"} weight={"bold"} size={16}></GpsFix></MapControl>
+					<MapControl hidden={!userInZurich(userLocation)} onClick={centerView}><GpsFix color={"var(--LOC)"} weight={"bold"} size={16}></GpsFix></MapControl>
+					<MapControl hidden={Math.abs(rotation) < 0.01} onClick={restoreRotation}><div style={{height: "16px", transform: "rotate(" + rotation + "rad)"/*, transition: "transform .3s"*/}}><NavigationArrow style={{transform: "rotate(45deg)"}} color={"var(--FG1)"} weight={"bold"} size={16}></NavigationArrow></div></MapControl>
 				</MapControlBar>
 			</div>
 			<div ref={overlayRef}>

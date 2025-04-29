@@ -2,10 +2,15 @@ import styles from "../styles/controls.module.css"
 import {CSSProperties, PropsWithChildren} from "react";
 import clsx from "clsx";
 
-export function MapControl({children, onClick, fillColor}: { fillColor?: string, onClick?: () => void } & PropsWithChildren) {
+export function MapControl({children, onClick, fillColor, hidden}: { fillColor?: string, onClick?: () => void, hidden?: boolean } & PropsWithChildren) {
+
+	const animStyles : CSSProperties = {
+		...{"--fill2": fillColor, transitionProperty: "height, margin-top, opacity", transitionDuration: ".3s, .3s, .1s"},
+		...(hidden ? {transitionDelay: ".1s, .1s, 0s", height: 0, marginTop: "calc(-1 * var(--gaps))", pointerEvents: "none", opacity: 0} : {transitionDelay: "0s, 0s, .3s"})
+	}
 
 	return <>
-		<button style={{"--fill2": fillColor}} onClick={onClick} className={styles.mapControl}>{children}</button>
+		<button style={{...{"--fill2": fillColor}, ...animStyles}} onClick={onClick} className={styles.mapControl}>{children}</button>
 	</>
 }
 
