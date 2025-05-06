@@ -174,6 +174,8 @@ export type Disruption = {
 	message: string;
 }
 
+export type Filter<t> = "ALL" | "NONE" | t | t[];
+
 declare module "react" {
 	interface CSSProperties {
 		[key: `--${string}`]: string | number;

@@ -11,29 +11,28 @@ import GeoJSON from "ol/format/GeoJSON";
 import {getDisruptions, getLineData, getStationData, getTramData, updateTramProgress, updateTramProgressInterpolated} from "../utils/dataUtils";
 import Overlay from "ol/Overlay";
 import styles from "../styles/tramMap.module.css";
-import {Line, Station, Tram} from "../utils/types";
+import {Filter, Line, Station, Tram} from "../utils/types";
 import {Feature, Geolocation} from "ol";
 import {Point} from "ol/geom";
 import {Coordinate} from "ol/coordinate";
 import {Attribution} from "ol/control";
 import {useTheme} from "next-themes";
 import {lineStyle, locationStyle, stationStyle, tramStyle, userInZurich} from "../utils/mapUtils";
-import {FocusOverlay, TramDot} from "./symbols";
+import {FocusOverlay} from "./symbols";
 import {MapControlBar, MapControl, MapControlGroup} from "./controls";
-import {Acorn, GpsFix, Minus, NavigationArrow, Plus} from "@phosphor-icons/react";
-import {} from 'ol/interaction.js';
+import {GpsFix, Minus, NavigationArrow, Plus} from "@phosphor-icons/react";
 import {DragRotateAndZoom, DblClickDragZoom, defaults as defaultInteractions} from "ol/interaction";
 
 // todo: integrate these somehow
 export const timeOffset = 86400000 * -0;
 export const histDate = ""; // ex: 2024-12-01 -> set offset to n days ago
 
-// TODO: what is type of target (in onClick) / focus should we even define that?
-export default function TramMap({onClick, filter, lineData, stationData, tramData, overlay}: { onClick: (target: any, userLocation: Geolocation) => void; filter?: { trams?: "ALL" | "NONE" | number, lines?: "ALL" | "NONE" | number, stations?: "ALL" | "NONE" }; lineData: Line[]; stationData: Station[]; tramData: Tram[]; overlay: any }) {
+
+export default function TramMap({onClick, filter, lineData, stationData, tramData, overlay}: { onClick: (target: any, userLocation: Geolocation) => void; filter?: { trams?: Filter<number>, lines?: Filter<string>, stations?: Filter<string>}; lineData: Line[]; stationData: Station[]; tramData: Tram[]; overlay: any }) {
 
 	// STATES AND REFS
 
-	const {theme, setTheme} = useTheme();
+	const {theme} = useTheme();
 
 	const [map, setMap] = useState<Map>(null);
 	const [stadiaLayer, setStadiaLayer] = useState<TileLayer>();
@@ -60,8 +59,8 @@ export default function TramMap({onClick, filter, lineData, stationData, tramDat
 		zoom: 15,
 		maxZoom: 19,
 		minZoom: 13,
-		extent: OlProj.fromLonLat([8.5417-0.15, 47.3769-0.08]).concat(OlProj.fromLonLat([8.5417+0.15, 47.3769+0.08]))
-		//extent: OlProj.fromLonLat([8.41362866027902, 47.32715038662897]).concat(OlProj.fromLonLat([8.629489073922688, 47.4627630523824]))
+		//extent: OlProj.fromLonLat([8.5417-0.15, 47.3769-0.08]).concat(OlProj.fromLonLat([8.5417+0.15, 47.3769+0.08]))
+		extent: OlProj.fromLonLat([8.434571348267301, 47.28091645062872]).concat(OlProj.fromLonLat([8.718285360198345, 47.45672784732389]))
 	});
 
 	// OnClick function to update the view
@@ -126,7 +125,7 @@ export default function TramMap({onClick, filter, lineData, stationData, tramDat
 					featureProjection: view.getProjection(),
 				}),
 			}),
-			style: lineStyle(filter)
+			style: lineStyle(filter.lines)
 		}))
 
 		setStationLayer(new VectorLayer({
@@ -137,7 +136,7 @@ export default function TramMap({onClick, filter, lineData, stationData, tramDat
 					featureProjection: view.getProjection(),
 				}),
 			}),
-			style: stationStyle(filter)
+			style: stationStyle(filter.stations)
 		}))
 
 		setTramLayer(new VectorLayer({
@@ -148,7 +147,7 @@ export default function TramMap({onClick, filter, lineData, stationData, tramDat
 					featureProjection: view.getProjection(),
 				})
 			}),
-			style: tramStyle(filter)
+			style: tramStyle(filter.trams)
 		}))
 
 		setUserLocationLayer(new VectorLayer({
@@ -159,7 +158,7 @@ export default function TramMap({onClick, filter, lineData, stationData, tramDat
 					geometry: new Point(userLocation)
 				})]
 			}),
-			style: locationStyle(filter)
+			style: locationStyle
 		}))
 
 		setOverlayLayer(new Overlay({
@@ -240,9 +239,9 @@ export default function TramMap({onClick, filter, lineData, stationData, tramDat
 			layer: theme === "light" ? "alidade_smooth" : "alidade_smooth_dark",
 			retina: true,
 		}))
-		lineLayer?.setStyle(lineStyle(filter))
-		stationLayer?.setStyle(stationStyle(filter))
-		tramLayer?.setStyle(tramStyle(filter))
+		lineLayer?.setStyle(lineStyle(filter.lines))
+		stationLayer?.setStyle(stationStyle(filter.stations))
+		tramLayer?.setStyle(tramStyle(filter.trams))
 	}, [theme, filter]);
 
 	// tram position

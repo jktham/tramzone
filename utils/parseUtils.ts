@@ -7,8 +7,6 @@ import readline from "node:readline";
 import { convertLV95toWGS84 } from "./mapUtils";
 import { Route, Trip, StopTime, Service, ServiceException, Station, Line, Segment, TramTrip, Tram, TripStatus, StopStatus, HistStop } from "./types";
 let AsyncLock = require("async-lock");
-import { parser } from 'stream-json';
-import { streamArray } from 'stream-json/streamers/StreamArray';
 
 export const KEY_RT = process.env.KEY_RT || "57c5dbbbf1fe4d000100001842c323fa9ff44fbba0b9b925f0c052d1"; // public default key dw
 export const KEY_SA = process.env.KEY_SA;
@@ -86,7 +84,7 @@ async function parseStations() {
 			coords: convertLV95toWGS84([Number(s[14]), Number(s[15])]),
 		};
 	});
-	stations = stations.filter((s) => s.type && s.type.toLowerCase().includes("tram"));
+	stations = stations.filter((s) => s.type && (s.type.toLowerCase().includes("tram") || s.type.toLowerCase().includes("s-bahn") && s.lines && s.lines.toLowerCase().includes("s18")));
 
 	let ignoredStations = JSON.parse(await fs.readFile(`data/datasets/ignoredStations.json`, "utf-8"));
 	stations = stations.filter((s) => !ignoredStations.includes(s.id));
@@ -102,7 +100,11 @@ async function parseLines() {
 
 	let lines: Line[] = [];
 	for (let feature of geojson.features) {
-		if (feature.properties["BETRIEBS00"]?.includes("VBZ-Tram")) {
+		if (["VBZ-Tram", "Forchbahn"].some(c => feature.properties["BETRIEBS00"]?.includes(c))) {
+
+			// TODO: temporary fix for now, pls improve
+			if (["12417_", "12419_"].some(id => feature.properties["LINIENSCHL"] === id)) continue;
+
 			let segment: Segment = {
 				from: feature.properties["VONHALTEST"],
 				to: feature.properties["BISHALTEST"],
@@ -112,14 +114,20 @@ async function parseLines() {
 			};
 			segment.geometry.coordinates = segment.geometry.coordinates.map((c) => convertLV95toWGS84(c));
 
+			/*if(feature.properties["BETRIEBS00"].includes("Forchbahn")) {
+				console.log(feature.properties)
+			}*/
+
+			let lineNumber = feature.properties["LINIENNUMM"].replace(/\D/g,'')
+
 			let found = lines.find((l) => l.id === feature.properties["LINIENSCHL"]);
 			if (found) {
 				found.segments.push(segment);
 			} else {
 				let line: Line = {
 					id: feature.properties["LINIENSCHL"],
-					name: feature.properties["LINIENNUMM"],
-					color: lineColors.find((l) => l.name == feature.properties["LINIENNUMM"])?.color || "#000000",
+					name: lineNumber,
+					color: lineColors.find((l) => l.name == lineNumber)?.color || "#000000",
 					start: feature.properties["ANFANGSHAL"],
 					end: feature.properties["ENDHALTEST"],
 					segments: [segment],
@@ -205,7 +213,7 @@ async function parseRoutes(date: string) {
 			agency: r[1]?.replace(/['"]+/g, ""),
 		};
 	});
-	routes = routes.filter((s) => s.type == "900" && s.agency == "3849"); // tram && VBZ
+	routes = routes.filter((s) => s.type == "900" && (s.agency == "3849" || s.agency == "46")); // VBZ-tram || forchbahn
 	await fs.writeFile("data/parsed/routes.json", JSON.stringify(routes));
 }
 

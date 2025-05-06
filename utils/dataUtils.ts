@@ -1,5 +1,5 @@
 import {getTramLocation} from "./mapUtils";
-import {Station, Line, Tram, Disruption} from "./types";
+import {Station, Line, Tram, Disruption, Filter} from "./types";
 
 export function getStationData(data: Station[]) {
 	let geoJson = {type: "FeatureCollection", features: []};
@@ -132,4 +132,8 @@ export function getAverageDelay(trams: Tram[]): number {
 		}
 	}
 	return sum / count;
+}
+
+export function containedInFilter<T>(object : T, filter : Filter<T>): boolean {
+	return filter === "ALL" || filter === object || filter instanceof Array && filter.includes(object);
 }

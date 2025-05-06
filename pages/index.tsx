@@ -12,6 +12,7 @@ import {MediaQueryContext} from "./_app";
 import {MapControlBar, MapControl, FancyControlBox} from "../components/controls";
 import {StackSimple, X} from "@phosphor-icons/react";
 import {Sidebar} from "../components/sidebar";
+import {Filter, Line} from "../utils/types";
 
 const fetcher = (url) => fetch(url).then((res) => res.json());
 
@@ -31,6 +32,7 @@ export default function Home() {
 	const [clickFilter, setClickFilter] = useState<number>(0);
 	const [lineFilter, setLineFilter] = useState<boolean>(false);
 	const [stationFilter, setStationFilter] = useState<boolean>(true);
+	const [lineFilter2, setLineFilter2] = useState<Set<string>>(new Set<string>());
 
 	const onClick = (target: any, userLocation: Geolocation) => {
 		if (!target) {
@@ -42,6 +44,13 @@ export default function Home() {
 		const overlay = (<><Overlay data={target.getProperties()} userLocation={userLocation}></Overlay></>)
 		setOverlay(overlay);
 		setClickFilter(target.getProperties().type === "tram" ? Number(target.getProperties().name) : 0);
+	}
+
+	const onOptChange = (e) => {
+		let s = new Set<string>(lineFilter2);
+		if (e.target.checked) s.add(e.target.id)
+		else s.delete(e.target.id)
+		setLineFilter2(s)
 	}
 
 	if (linesLoading || stationsLoading || tramsLoading)
@@ -74,11 +83,19 @@ export default function Home() {
 							</g>
 						</svg>
 					</FancyControlBox>
+					<form onChange={onOptChange}>
+						{lineData.map((l : Line) => <>
+							<input type="checkbox" id={l.id} name={l.id} value={l.id}></input>
+							<label style={{color: "var(--FG1)"}} htmlFor={l.id}>{l.id} // {l.name}</label>
+							<br></br>
+						</>)}
+					</form>
 				</Sidebar>}
 				{mobile && overlay}
 			</Grid>
 			{/*<button style={{position: "absolute", zIndex: 1000}} onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>Mode</button>*/} {/* DEBUG */}
-			<TramMap onClick={onClick} filter={{trams: clickFilter || "ALL", lines: clickFilter || (lineFilter ? "ALL" : "NONE"), stations: stationFilter ? "ALL" : "NONE"}} lineData={lineData} stationData={stationData} tramData={tramData} overlay={!mobile && overlay}></TramMap>
+			{/*<TramMap onClick={onClick} filter={{trams: clickFilter || "ALL", lines: clickFilter || (lineFilter ? "ALL" : "NONE"), stations: stationFilter ? "ALL" : "NONE"}} lineData={lineData} stationData={stationData} tramData={tramData} overlay={!mobile && overlay}></TramMap>*/}
+			<TramMap onClick={onClick} filter={{trams: "ALL", lines: [...lineFilter2], stations: "ALL"}} lineData={lineData} stationData={stationData} tramData={tramData} overlay={!mobile && overlay}></TramMap>
 		</>
 	);
 }

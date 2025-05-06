@@ -1,10 +1,11 @@
-import {Tram, Line} from "./types";
+import {Tram, Line, Filter} from "./types";
 import Style from "ol/style/Style";
 import {Circle, Fill, Stroke} from "ol/style";
 import {Feature} from "ol";
 import * as Extent from "ol/extent";
 import * as OlProj from "ol/proj";
 import {Coordinate} from "ol/coordinate";
+import {containedInFilter} from "./dataUtils";
 
 export function grayscaleLayer(context) {
 	let canvas = context.canvas;
@@ -131,7 +132,7 @@ export function userInZurich(userLocation : Coordinate) {
 
 // STYLES
 
-export const tramStyle = (filter) => (feature: Feature) => (!filter?.trams || filter.trams === "ALL" || Number(feature.getProperties().name) === filter.trams) ? [
+export const tramStyle = (filter : Filter<number>)=> (feature: Feature) => containedInFilter(Number(feature.getProperties().name), filter) ? [
 	new Style({
 		image: new Circle({
 			radius: 8,
@@ -154,7 +155,7 @@ export const tramStyle = (filter) => (feature: Feature) => (!filter?.trams || fi
 	}),
 ] : []
 
-export const stationStyle = (filter) => (feature: Feature) => (!filter?.stations || filter.stations === "ALL") ? [
+export const stationStyle = (filter : Filter<string>)=> (feature: Feature) => containedInFilter(feature.getProperties().name, filter) ? [
 	new Style({
 		image: new Circle({
 			radius: 5,
@@ -177,7 +178,7 @@ export const stationStyle = (filter) => (feature: Feature) => (!filter?.stations
 	})
 ] : []
 
-export const lineStyle = (filter) => (feature: Feature) => (!filter?.lines || filter.lines === "ALL" || Number(feature.getProperties().name) === filter.lines) ? [
+export const lineStyle = (filter : Filter<string>)=> (feature: Feature) => containedInFilter(feature.getProperties().id, filter) ? [
 	new Style({
 		stroke: new Stroke({
 			width: 3,
@@ -192,7 +193,7 @@ export const lineStyle = (filter) => (feature: Feature) => (!filter?.lines || fi
 	})
 ] : []
 
-export const locationStyle = (filter) => (feature: Feature) => [
+export const locationStyle = (feature: Feature) => [
 	new Style({
 		image: new Circle({
 			radius: 6.5,
