@@ -5,7 +5,7 @@ let shapefile = require("shapefile");
 import csv from "csv-parser";
 import readline from "node:readline";
 import { convertLV95toWGS84 } from "./mapUtils";
-import { Route, Trip, StopTime, Service, ServiceException, Station, Line, Segment, TramTrip, Tram, TripStatus, StopStatus, HistStop } from "./types";
+import {Route, Trip, StopTime, Service, ServiceException, Station, Line, Segment, TramTrip, Tram, TripStatus, StopStatus, HistStop} from "./types";
 let AsyncLock = require("async-lock");
 
 export const KEY_RT = process.env.KEY_RT || "57c5dbbbf1fe4d000100001842c323fa9ff44fbba0b9b925f0c052d1"; // public default key dw
@@ -103,7 +103,7 @@ async function parseLines() {
 		if (["VBZ-Tram", "Forchbahn"].some(c => feature.properties["BETRIEBS00"]?.includes(c))) {
 
 			// TODO: temporary fix for now, pls improve
-			if (["12417_", "12419_"].some(id => feature.properties["LINIENSCHL"] === id)) continue;
+			//if (["12417_", "12419_"].some(id => feature.properties["LINIENSCHL"] === id)) continue;
 
 			let segment: Segment = {
 				from: feature.properties["VONHALTEST"],
@@ -114,13 +114,33 @@ async function parseLines() {
 			};
 			segment.geometry.coordinates = segment.geometry.coordinates.map((c) => convertLV95toWGS84(c));
 
-			/*if(feature.properties["BETRIEBS00"].includes("Forchbahn")) {
-				console.log(feature.properties)
-			}*/
+			let gtfsLineName = feature.properties["LINIENNUMM"].replace(/\D/g,'')
 
-			let lineNumber = feature.properties["LINIENNUMM"].replace(/\D/g,'')
+			let foundLine = lines.find(l => l.name === gtfsLineName);
+			if (!foundLine) {
+				foundLine = {
+					name: gtfsLineName,
+					color: lineColors.find(l => l.name == gtfsLineName)?.color || "#000000",
+					services: []
+				}
+				lines.push(foundLine)
+			}
 
-			let found = lines.find((l) => l.id === feature.properties["LINIENSCHL"]);
+			let foundService = foundLine.services.find(s => s.id === feature.properties["LINIENSCHL"])
+			if (!foundService) {
+				foundService = {
+					id: feature.properties["LINIENSCHL"],
+					full_name: feature.properties["LINIENNUMM"],
+					start: feature.properties["ANFANGSHAL"],
+					end: feature.properties["ENDHALTEST"],
+					segments: []
+				}
+				foundLine.services.push(foundService)
+			}
+
+			foundService.segments.push(segment)
+
+			/*let found = lines.find((l) => l.id === feature.properties["LINIENSCHL"]);
 			if (found) {
 				found.segments.push(segment);
 			} else {
@@ -133,15 +153,15 @@ async function parseLines() {
 					segments: [segment],
 				};
 				lines.push(line);
-			}
+			}*/
 		}
 	}
 
-	lines.find((l) => l.name == "10").start = "Zürich, Bahnhofplatz/HB";
+	lines.find(l => l.name == "10").services.find(s => s.full_name == "10").start = "Zürich, Bahnhofplatz/HB";
 	let lineSegmentOverrides = JSON.parse(await fs.readFile(`data/datasets/lineSegments.json`, "utf-8"));
 
 	for (let segmentOverride of lineSegmentOverrides) {
-		let lineSegments = lines.find((l) => l.name == segmentOverride.name).segments;
+		let lineSegments = lines.find(l => l.name == segmentOverride.name).services.find(s => s.full_name == segmentOverride.name).segments;
 		let found = lineSegments.find((s) => s.from == segmentOverride.segment.from && s.to == segmentOverride.segment.to);
 		if (found) {
 			lineSegments[lineSegments.indexOf(found)] = segmentOverride.segment;
@@ -152,17 +172,23 @@ async function parseLines() {
 
 	lines.sort((a, b) => Number(a.name) - Number(b.name));
 	for (let line of lines) {
-		line.segments.sort((a, b) => a.sequence - b.sequence);
-		line.segments.sort((a, b) => a.direction - b.direction);
+		line.services.sort((a, b) => Number(a.id.replace("_", "")) - Number(b.id.replace("_", "")));
+		for (let service of line.services) {
+			service.segments.sort((a, b) => a.sequence - b.sequence);
+			service.segments.sort((a, b) => a.direction - b.direction);
+		}
 	}
 
 	let extraLine: Line = {
-		id: "01099_",
 		name: "E",
 		color: lineColors.find((l) => l.name == "E")?.color || "#000000",
-		start: "Extra",
-		end: "Extra",
-		segments: [],
+		services: [{
+			id: "01099_",
+			full_name: "E",
+			start: "Extra",
+			end: "Extra",
+			segments: [],
+		}]
 	};
 	lines.push(extraLine);
 	

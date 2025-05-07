@@ -29,28 +29,30 @@ export default function Home() {
 
 	const [overlay, setOverlay] = useState<ReactElement>(null);
 	const [sidebar, setSidebar] = useState<boolean>(false);
-	const [clickFilter, setClickFilter] = useState<number>(0);
-	const [lineFilter, setLineFilter] = useState<boolean>(false);
-	const [stationFilter, setStationFilter] = useState<boolean>(true);
-	const [lineFilter2, setLineFilter2] = useState<Set<string>>(new Set<string>());
+	//const [clickFilter, setClickFilter] = useState<number>(0);
+	const [showLines, setShowLines] = useState<boolean>(true);
+	const [showStations, setShowStations] = useState<boolean>(true);
+	const [showTrams, setShowTrams] = useState<boolean>(true);
+	const [lineFilter, setLineFilter] = useState<string[]>([]);
 
 	const onClick = (target: any, userLocation: Geolocation) => {
 		if (!target) {
-			setClickFilter(0);
+			//setClickFilter(0);
 			setOverlay(null);
 			return;
 		}
 
 		const overlay = (<><Overlay data={target.getProperties()} userLocation={userLocation}></Overlay></>)
 		setOverlay(overlay);
-		setClickFilter(target.getProperties().type === "tram" ? Number(target.getProperties().name) : 0);
+		//setClickFilter(target.getProperties().type === "tram" ? Number(target.getProperties().name) : 0);
 	}
 
 	const onOptChange = (e) => {
-		let s = new Set<string>(lineFilter2);
+		/*let s = new Set<string>(lineFilter2);
 		if (e.target.checked) s.add(e.target.id)
-		else s.delete(e.target.id)
-		setLineFilter2(s)
+		else s.delete(e.target.id)*/
+		if (e.target.checked) setLineFilter(lineFilter.concat([e.target.value]))
+		else setLineFilter(lineFilter.filter(s => s !== e.target.value));
 	}
 
 	if (linesLoading || stationsLoading || tramsLoading)
@@ -66,7 +68,7 @@ export default function Home() {
 				<MapControlBar style={{gridArea: "controlsL"}}><MapControl onClick={() => setSidebar(!sidebar)}><StackSimple color={"var(--FG1)"} weight={"bold"} size={16}></StackSimple></MapControl></MapControlBar>
 				{sidebar && <Sidebar>
 					<h1>Tramz.one <MapControl onClick={() => setSidebar(false)}><X color={"var(--FG1)"} weight={"bold"} size={16}></X></MapControl></h1>
-					<FancyControlBox state={lineFilter} title={"Lines"} onClick={() => setLineFilter(!lineFilter)}>
+					<FancyControlBox state={showLines} title={"Lines"} onClick={() => setShowLines(!showLines)}>
 						<svg xmlns="http://www.w3.org/2000/svg" preserveAspectRatio={"xMidYMid slice"} viewBox="0 0 158 183" fill="none">
 							<g mask="url(#mask0_252_301)">
 								<path vector-effect="non-scaling-stroke" d="M117.671 -3.99994V24.5001C117.671 49.0001 117.671 48.6083 92.5 73.7797C68.2796 98.0001 68.5 98.0001 30 98.0001H-2" stroke="#EE3897" stroke-width="3"/>
@@ -74,7 +76,7 @@ export default function Home() {
 							</g>
 						</svg>
 					</FancyControlBox>
-					<FancyControlBox state={stationFilter} title={"Stations"} onClick={() => setStationFilter(!stationFilter)}>
+					<FancyControlBox state={showStations} title={"Stations"} onClick={() => setShowStations(!showStations)}>
 						<svg xmlns="http://www.w3.org/2000/svg" preserveAspectRatio={"xMidYMid slice"} viewBox="0 0 159 183" fill="none">
 							<g mask="url(#mask0_252_284)">
 								<path vector-effect="non-scaling-stroke" d="M166 56.0004L129.5 56.0004C115.5 56.0004 115.5 56.0004 92.0002 79.5004C67.0006 104.5 67.0002 104.5 45.5002 104.5L-3.5 104.5" stroke="#49479D" stroke-width="3"/>
@@ -84,18 +86,18 @@ export default function Home() {
 						</svg>
 					</FancyControlBox>
 					<form onChange={onOptChange}>
-						{lineData.map((l : Line) => <>
-							<input type="checkbox" id={l.id} name={l.id} value={l.id}></input>
-							<label style={{color: "var(--FG1)"}} htmlFor={l.id}>{l.id} // {l.name}</label>
+						{lineData.map((l : Line) => l.services.map(s => <>
+							<input type="checkbox" id={s.id} name={s.id} value={s.id}></input>
+							<label style={{color: "var(--FG1)"}} htmlFor={s.id}>{s.id} // {s.full_name}</label>
 							<br></br>
-						</>)}
+						</>))}
 					</form>
 				</Sidebar>}
 				{mobile && overlay}
 			</Grid>
 			{/*<button style={{position: "absolute", zIndex: 1000}} onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>Mode</button>*/} {/* DEBUG */}
 			{/*<TramMap onClick={onClick} filter={{trams: clickFilter || "ALL", lines: clickFilter || (lineFilter ? "ALL" : "NONE"), stations: stationFilter ? "ALL" : "NONE"}} lineData={lineData} stationData={stationData} tramData={tramData} overlay={!mobile && overlay}></TramMap>*/}
-			<TramMap onClick={onClick} filter={{trams: "ALL", lines: [...lineFilter2], stations: "ALL"}} lineData={lineData} stationData={stationData} tramData={tramData} overlay={!mobile && overlay}></TramMap>
+			<TramMap onClick={onClick} filter={{trams: "ALL", lines: showLines ? lineFilter : "NONE", stations: showStations ? "ALL" : "NONE"}} lineData={lineData} stationData={stationData} tramData={tramData} overlay={!mobile && overlay}></TramMap>
 		</>
 	);
 }

@@ -18,14 +18,16 @@ export function getStationData(data: Station[]) {
 export function getLineData(data: Line[]) {
 	let geoJSON = {type: "FeatureCollection", features: []};
 	for (let line of data) {
-		for (let segment of line.segments) {
-			let additionalContent = {type: "line"};
-			let feature = {
-				type: "Feature",
-				geometry: segment.geometry,
-				properties: {...line, ...additionalContent},
-			};
-			geoJSON.features.push(feature);
+		for (let service of line.services) {
+			for (let segment of service.segments) {
+				let additionalContent = {type: "line"};
+				let feature = {
+					type: "Feature",
+					geometry: segment.geometry,
+					properties: {...line, ...service, ...additionalContent},
+				};
+				geoJSON.features.push(feature);
+			}
 		}
 	}
 	return geoJSON;

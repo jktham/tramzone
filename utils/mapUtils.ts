@@ -51,13 +51,13 @@ export function convertLV95toWGS84(coords) {
 	return [eastCoord, northCoord];
 }
 
-// todo: cleanup
+// todo: cleanup & select correct service (not just [0])
 export function getTramLocation(tram: Tram, lines: Line[]) {
 	let prev_stop = tram.stops.find((s) => s.stop_sequence == Math.floor(tram.progress));
 	let next_stop = tram.stops.find((s) => s.stop_sequence == Math.floor(tram.progress + 1));
 
 	// current line
-	let segments = lines.find((l) => l.name == tram.route_name)?.segments;
+	let segments = lines.find((l) => l.name == tram.route_name)?.services[0]?.segments;
 	let current_segment = segments?.find((s) => s.from == prev_stop?.stop_diva && s.to == next_stop?.stop_diva);
 
 	if (!next_stop) { // last stop?
@@ -68,7 +68,7 @@ export function getTramLocation(tram: Tram, lines: Line[]) {
 	}
 
 	if (!current_segment) { // any line
-		segments = lines.flatMap((l) => l.segments);
+		segments = lines.flatMap((l) => l.services[0].segments);
 		current_segment = segments?.find((s) => s.from == prev_stop?.stop_diva && s.to == next_stop?.stop_diva);
 	}
 
@@ -80,7 +80,7 @@ export function getTramLocation(tram: Tram, lines: Line[]) {
 	}
 
 	if (!current_segment) { // give up, use prev station
-		console.warn(`missing line segment from ${prev_stop?.stop_diva} to ${next_stop?.stop_diva}`, prev_stop, next_stop);
+		console.warn(`(${tram.route_name}) missing line segment from ${prev_stop?.stop_diva} to ${next_stop?.stop_diva}`, prev_stop, next_stop);
 		let try_prev = segments.find((s) => s.from == prev_stop?.stop_diva)?.geometry.coordinates[0];
 		return try_prev || [0, 0];
 	}
