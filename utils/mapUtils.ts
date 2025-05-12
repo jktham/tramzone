@@ -6,6 +6,7 @@ import * as Extent from "ol/extent";
 import * as OlProj from "ol/proj";
 import {Coordinate} from "ol/coordinate";
 import {containedInFilter} from "./dataUtils";
+import {FeatureLike} from "ol/Feature";
 
 export function grayscaleLayer(context) {
 	let canvas = context.canvas;
@@ -51,17 +52,26 @@ export function convertLV95toWGS84(coords) {
 	return [eastCoord, northCoord];
 }
 
-// todo: cleanup & select correct service (not just [0])
+const MAX_ROUTEING_LENGTH = 1; // amount of in-between stops
+
+// todo: CLEANUP! & select correct service (not just [0])
 export function getTramLocation(tram: Tram, lines: Line[]) {
+
+	let fb = tram.route_name === "18";
+
 	let prev_stop = tram.stops.find((s) => s.stop_sequence == Math.floor(tram.progress));
 	let next_stop = tram.stops.find((s) => s.stop_sequence == Math.floor(tram.progress + 1));
+
+	let fbLimbo = fb && (prev_stop.stop_diva === 12438 && next_stop.stop_diva === 2549 || prev_stop.stop_diva === 2549 && next_stop.stop_diva === 12438);
 
 	// current line
 	let segments = lines.find((l) => l.name == tram.route_name)?.services[0]?.segments;
 	let current_segment = segments?.find((s) => s.from == prev_stop?.stop_diva && s.to == next_stop?.stop_diva);
 
+	if (fbLimbo) console.log("Forchbahn Limbo");
+
 	if (!next_stop) { // last stop?
-		let try_prev = segments.find((s) => s.from == prev_stop?.stop_diva)?.geometry.coordinates[0];
+		let try_prev = segments?.find((s) => s.from == prev_stop?.stop_diva)?.geometry.coordinates[0];
 		if (try_prev) {
 			return try_prev;
 		}
@@ -73,16 +83,20 @@ export function getTramLocation(tram: Tram, lines: Line[]) {
 	}
 
 	if (!next_stop) { // last stop any line
-		let try_prev = segments.find((s) => s.from == prev_stop?.stop_diva)?.geometry.coordinates[0];
+		let try_prev = segments?.find((s) => s.from == prev_stop?.stop_diva)?.geometry.coordinates[0];
 		if (try_prev) {
 			return try_prev;
 		}
 	}
 
+	if (!current_segment && next_stop) { // try routing
+
+	}
+
 	if (!current_segment) { // give up, use prev station
 		console.warn(`(${tram.route_name}) missing line segment from ${prev_stop?.stop_diva} to ${next_stop?.stop_diva}`, prev_stop, next_stop);
-		let try_prev = segments.find((s) => s.from == prev_stop?.stop_diva)?.geometry.coordinates[0];
-		return try_prev || [0, 0];
+		let try_prev = segments?.find((s) => s.from == prev_stop?.stop_diva)?.geometry.coordinates[0];
+		return try_prev || [0, 0]; // haha null island tram
 	}
 
 	let total_length = 0;
@@ -126,13 +140,17 @@ export function getTramLocation(tram: Tram, lines: Line[]) {
 	return try_prev || [0, 0];
 }
 
+function tramDFS() {
+
+}
+
 export function userInZurich(userLocation : Coordinate) {
 	return Extent.containsCoordinate(OlProj.fromLonLat([8.5417-0.15, 47.3769-0.08]).concat(OlProj.fromLonLat([8.5417+0.15, 47.3769+0.08])), userLocation)
 }
 
 // STYLES
 
-export const tramStyle = (filter : Filter<number>)=> (feature: Feature) => containedInFilter(Number(feature.getProperties().name), filter) ? [
+export const tramStyle = (filter : Filter<string>)=> (feature: Feature) => containedInFilter(feature.getProperties().name, filter) ? [
 	new Style({
 		image: new Circle({
 			radius: 8,
@@ -178,20 +196,43 @@ export const stationStyle = (filter : Filter<string>)=> (feature: Feature) => co
 	})
 ] : []
 
-export const lineStyle = (filter : Filter<string>)=> (feature: Feature) => containedInFilter(feature.getProperties().id, filter) ? [
-	new Style({
-		stroke: new Stroke({
-			width: 3,
-			color: feature.get("color"),
+export const lineStyle = (filter : Filter<string>, focus : FeatureLike)=> (feature: Feature) => {
+
+	return containedInFilter(feature.getProperties().name, filter) ? ((feature === focus) ? [
+		new Style({
+			stroke: new Stroke({
+				width: 9,
+				color: getComputedStyle(document.documentElement).getPropertyValue('--BG4'),
+			}),
 		}),
-	}),
-	new Style({
-		stroke: new Stroke({
-			width: 10,
-			color: "transparent",
+		new Style({
+			stroke: new Stroke({
+				width: 3,
+				color: feature.get("color"),
+			}),
 		}),
-	})
-] : []
+
+		new Style({
+			stroke: new Stroke({
+				width: 10,
+				color: "transparent",
+			}),
+		})
+	] : [
+		new Style({
+			stroke: new Stroke({
+				width: 3,
+				color: feature.get("color"),
+			}),
+		}),
+		new Style({
+			stroke: new Stroke({
+				width: 10,
+				color: "transparent",
+			}),
+		})
+	]) : []
+}
 
 export const locationStyle = (feature: Feature) => [
 	new Style({

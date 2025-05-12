@@ -24,7 +24,12 @@ export function getLineData(data: Line[]) {
 				let feature = {
 					type: "Feature",
 					geometry: segment.geometry,
-					properties: {...line, ...service, ...additionalContent},
+					properties: { // TODO: better structure & types for properties
+						segment: segment,
+						...line,
+						...service,
+						...additionalContent
+					},
 				};
 				geoJSON.features.push(feature);
 			}

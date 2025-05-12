@@ -102,8 +102,8 @@ async function parseLines() {
 	for (let feature of geojson.features) {
 		if (["VBZ-Tram", "Forchbahn"].some(c => feature.properties["BETRIEBS00"]?.includes(c))) {
 
-			// TODO: temporary fix for now, pls improve
-			//if (["12417_", "12419_"].some(id => feature.properties["LINIENSCHL"] === id)) continue;
+			// TODO: improve, temporary fix for now
+			if (["12417_", "12419_"].some(id => feature.properties["LINIENSCHL"] === id)) continue;
 
 			let segment: Segment = {
 				from: feature.properties["VONHALTEST"],
@@ -120,7 +120,7 @@ async function parseLines() {
 			if (!foundLine) {
 				foundLine = {
 					name: gtfsLineName,
-					color: lineColors.find(l => l.name == gtfsLineName)?.color || "#000000",
+					color: lineColors.find(l => l.name == gtfsLineName)?.color || "#888888",
 					services: []
 				}
 				lines.push(foundLine)
@@ -157,11 +157,11 @@ async function parseLines() {
 		}
 	}
 
-	lines.find(l => l.name == "10").services.find(s => s.full_name == "10").start = "Zürich, Bahnhofplatz/HB";
+	//lines.find(l => l.name == "10").services.find(s => s.full_name == "10").start = "Zürich, Bahnhofplatz/HB";
 	let lineSegmentOverrides = JSON.parse(await fs.readFile(`data/datasets/lineSegments.json`, "utf-8"));
 
 	for (let segmentOverride of lineSegmentOverrides) {
-		let lineSegments = lines.find(l => l.name == segmentOverride.name).services.find(s => s.full_name == segmentOverride.name).segments;
+		let lineSegments = lines.find(l => l.name == segmentOverride.name).services.find(s => s.full_name == segmentOverride.service_name).segments;
 		let found = lineSegments.find((s) => s.from == segmentOverride.segment.from && s.to == segmentOverride.segment.to);
 		if (found) {
 			lineSegments[lineSegments.indexOf(found)] = segmentOverride.segment;

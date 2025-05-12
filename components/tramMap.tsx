@@ -22,13 +22,14 @@ import {FocusOverlay} from "./symbols";
 import {MapControlBar, MapControl, MapControlGroup} from "./controls";
 import {GpsFix, Minus, NavigationArrow, Plus} from "@phosphor-icons/react";
 import {DragRotateAndZoom, DblClickDragZoom, defaults as defaultInteractions} from "ol/interaction";
+import {FeatureLike} from "ol/Feature";
 
 // todo: integrate these somehow
 export const timeOffset = 86400000 * -0;
 export const histDate = ""; // ex: 2024-12-01 -> set offset to n days ago
 
 
-export default function TramMap({onClick, filter, lineData, stationData, tramData, overlay}: { onClick: (target: any, userLocation: Geolocation) => void; filter?: { trams?: Filter<number>, lines?: Filter<string>, stations?: Filter<string>}; lineData: Line[]; stationData: Station[]; tramData: Tram[]; overlay: any }) {
+export default function TramMap({onClick, filter, lineData, stationData, tramData, overlay, debug}: { onClick: (target: any, userLocation: Geolocation) => void; filter?: { trams?: Filter<string>, lines?: Filter<string>, stations?: Filter<string>}; lineData: Line[]; stationData: Station[]; tramData: Tram[]; overlay: any, debug: boolean }) {
 
 	// STATES AND REFS
 
@@ -45,7 +46,7 @@ export default function TramMap({onClick, filter, lineData, stationData, tramDat
 	const [userLocation, setUserLocation] = useState<Coordinate>(OlProj.fromLonLat([0, 0]));
 	const [prevTramData, setPrevTramData] = useState<Tram[]>();
 	const [geolocation, setGeolocation] = useState<any>();
-	const [focus, setFocus] = useState(null);
+	const [focus, setFocus] = useState<FeatureLike>(null);
 
 	const [rotation, setRotation] = useState(0);
 
@@ -125,7 +126,7 @@ export default function TramMap({onClick, filter, lineData, stationData, tramDat
 					featureProjection: view.getProjection(),
 				}),
 			}),
-			style: lineStyle(filter.lines)
+			style: lineStyle(filter.lines, focus)
 		}))
 
 		setStationLayer(new VectorLayer({
@@ -200,7 +201,7 @@ export default function TramMap({onClick, filter, lineData, stationData, tramDat
 			if (stationCandidate) console.log(stationCandidate)
 			if (lineCandidate) console.log(lineCandidate)
 
-			let selectedFeature = tramCandidate || stationCandidate// || lineCandidate
+			let selectedFeature = tramCandidate || stationCandidate || (debug ? lineCandidate : undefined)
 
 			setFocus(selectedFeature)
 			onClick(selectedFeature, geolocation);
@@ -239,10 +240,10 @@ export default function TramMap({onClick, filter, lineData, stationData, tramDat
 			layer: theme === "light" ? "alidade_smooth" : "alidade_smooth_dark",
 			retina: true,
 		}))
-		lineLayer?.setStyle(lineStyle(filter.lines))
+		lineLayer?.setStyle(lineStyle(filter.lines, focus))
 		stationLayer?.setStyle(stationStyle(filter.stations))
 		tramLayer?.setStyle(tramStyle(filter.trams))
-	}, [theme, filter]);
+	}, [theme, filter, focus]);
 
 	// tram position
 	useEffect(() => {
@@ -298,7 +299,7 @@ export default function TramMap({onClick, filter, lineData, stationData, tramDat
 				</MapControlBar>
 			</div>
 			<div ref={overlayRef}>
-				<div className={styles.focus}>{focus && <FocusOverlay data={focus.getProperties()}></FocusOverlay>}</div>
+				<div className={styles.focus}>{focus && !(focus.getProperties().type === "line") && <FocusOverlay data={focus.getProperties()}></FocusOverlay>}</div>
 				<div className={styles.overlay}>{overlay}</div>
 			</div>
 			<div className={styles.map} id="map"/>

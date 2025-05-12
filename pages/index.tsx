@@ -1,6 +1,6 @@
 import useSWR from "swr";
 import TramMap from "../components/tramMap";
-import {ReactElement, useContext, useState} from "react";
+import {ReactElement, useContext, useEffect, useState} from "react";
 import Overlay from "../components/overlay";
 import SEO from "../components/SEO";
 import Loading from "../components/loading";
@@ -13,6 +13,7 @@ import {MapControlBar, MapControl, FancyControlBox} from "../components/controls
 import {StackSimple, X} from "@phosphor-icons/react";
 import {Sidebar} from "../components/sidebar";
 import {Filter, Line} from "../utils/types";
+import {useSearchParams} from "next/navigation";
 
 const fetcher = (url) => fetch(url).then((res) => res.json());
 
@@ -23,37 +24,37 @@ export default function Home() {
 	const tramUrl = !histDate ? `/api/trams?active=true&timeOffset=${timeOffset}` : `/api/tramsHist?active=true&date=${histDate}&timeOffset=${timeOffset}`;
 	const {data: tramData, error: tramsError, isLoading: tramsLoading} = useSWR(tramUrl, fetcher, {refreshInterval: 4000});
 
+	const searchParams = useSearchParams()
+
 	const {mobile} = useContext(MediaQueryContext);
 
 	const {theme, setTheme} = useTheme();
 
 	const [overlay, setOverlay] = useState<ReactElement>(null);
 	const [sidebar, setSidebar] = useState<boolean>(false);
-	//const [clickFilter, setClickFilter] = useState<number>(0);
-	const [showLines, setShowLines] = useState<boolean>(true);
+	const [showLines, setShowLines] = useState<boolean>(false);
 	const [showStations, setShowStations] = useState<boolean>(true);
-	const [showTrams, setShowTrams] = useState<boolean>(true);
-	const [lineFilter, setLineFilter] = useState<string[]>([]);
+	//const [showTrams, setShowTrams] = useState<boolean>(true);
+	//const [lineFilter, setLineFilter] = useState<string[]>([]);
+	const [clickFilter, setClickFilter] = useState<string[]>(null);
 
 	const onClick = (target: any, userLocation: Geolocation) => {
 		if (!target) {
-			//setClickFilter(0);
+			setClickFilter(null);
 			setOverlay(null);
 			return;
 		}
 
 		const overlay = (<><Overlay data={target.getProperties()} userLocation={userLocation}></Overlay></>)
 		setOverlay(overlay);
-		//setClickFilter(target.getProperties().type === "tram" ? Number(target.getProperties().name) : 0);
+		setClickFilter(target.getProperties().type === "tram" ? target.getProperties().name : null);
 	}
 
-	const onOptChange = (e) => {
-		/*let s = new Set<string>(lineFilter2);
-		if (e.target.checked) s.add(e.target.id)
-		else s.delete(e.target.id)*/
+
+	/*const onOptChange = (e) => {
 		if (e.target.checked) setLineFilter(lineFilter.concat([e.target.value]))
 		else setLineFilter(lineFilter.filter(s => s !== e.target.value));
-	}
+	}*/
 
 	if (linesLoading || stationsLoading || tramsLoading)
 		return <>
@@ -85,19 +86,19 @@ export default function Home() {
 							</g>
 						</svg>
 					</FancyControlBox>
-					<form onChange={onOptChange}>
+					{/*<form style={{overflowY: "scroll"}} onChange={onOptChange}>
 						{lineData.map((l : Line) => l.services.map(s => <>
 							<input type="checkbox" id={s.id} name={s.id} value={s.id}></input>
 							<label style={{color: "var(--FG1)"}} htmlFor={s.id}>{s.id} // {s.full_name}</label>
 							<br></br>
 						</>))}
-					</form>
+					</form>*/}
 				</Sidebar>}
 				{mobile && overlay}
 			</Grid>
 			{/*<button style={{position: "absolute", zIndex: 1000}} onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>Mode</button>*/} {/* DEBUG */}
-			{/*<TramMap onClick={onClick} filter={{trams: clickFilter || "ALL", lines: clickFilter || (lineFilter ? "ALL" : "NONE"), stations: stationFilter ? "ALL" : "NONE"}} lineData={lineData} stationData={stationData} tramData={tramData} overlay={!mobile && overlay}></TramMap>*/}
-			<TramMap onClick={onClick} filter={{trams: "ALL", lines: showLines ? lineFilter : "NONE", stations: showStations ? "ALL" : "NONE"}} lineData={lineData} stationData={stationData} tramData={tramData} overlay={!mobile && overlay}></TramMap>
+			<TramMap debug={!!searchParams.get('debug')} onClick={onClick} filter={{trams: clickFilter || "ALL", lines: clickFilter || (showLines ? "ALL" : "NONE"), stations: showStations ? "ALL" : "NONE"}} lineData={lineData} stationData={stationData} tramData={tramData} overlay={!mobile && overlay}></TramMap>
+			{/*<TramMap debug={!!searchParams.get('debug')} onClick={onClick} filter={{trams: "ALL", lines: showLines ? lineFilter : "NONE", stations: showStations ? "ALL" : "NONE"}} lineData={lineData} stationData={stationData} tramData={tramData} overlay={!mobile && overlay}></TramMap>*/}
 		</>
 	);
 }
