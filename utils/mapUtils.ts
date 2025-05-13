@@ -1,4 +1,4 @@
-import {Tram, Line, Filter} from "./types";
+import {Tram, Line, Filter, Segment} from "./types";
 import Style from "ol/style/Style";
 import {Circle, Fill, Stroke} from "ol/style";
 import {Feature} from "ol";
@@ -52,29 +52,47 @@ export function convertLV95toWGS84(coords) {
 	return [eastCoord, northCoord];
 }
 
-const MAX_ROUTEING_LENGTH = 1; // amount of in-between stops
-
 // todo: CLEANUP! & select correct service (not just [0])
 export function getTramLocation(tram: Tram, lines: Line[]) {
 
-	let fb = tram.route_name === "18";
+	let debugInfo = `(${tram.route_name} : ${tram.trip_name})`
 
 	let prev_stop = tram.stops.find((s) => s.stop_sequence == Math.floor(tram.progress));
 	let next_stop = tram.stops.find((s) => s.stop_sequence == Math.floor(tram.progress + 1));
 
-	let fbLimbo = fb && (prev_stop.stop_diva === 12438 && next_stop.stop_diva === 2549 || prev_stop.stop_diva === 2549 && next_stop.stop_diva === 12438);
-
 	// current line
 	let segments = lines.find((l) => l.name == tram.route_name)?.services[0]?.segments;
 	let current_segment = segments?.find((s) => s.from == prev_stop?.stop_diva && s.to == next_stop?.stop_diva);
-
-	if (fbLimbo) console.log("Forchbahn Limbo");
 
 	if (!next_stop) { // last stop?
 		let try_prev = segments?.find((s) => s.from == prev_stop?.stop_diva)?.geometry.coordinates[0];
 		if (try_prev) {
 			return try_prev;
 		}
+	}
+
+	// TODO: ugly temp forchbahn limbo solution
+	if (!current_segment && segments && prev_stop && next_stop) { // try skipping stop using sequence numbers
+		//console.log(`${debugInfo} tried skipping from ${prev_stop?.stop_name} to ${next_stop?.stop_name}`)
+		const MAX_SKIPPED = 1;
+		let startSegments = segments.filter((s) => s.from == prev_stop?.stop_diva);
+		let count = null;
+		startSegments.forEach(s => {
+			//console.log(debugInfo, s)
+			let candidate = [s]
+			//let seq = s.sequence;
+			for (let i = 0; i < MAX_SKIPPED; i++) {
+				let nextSegment = segments.find(s => s.from === candidate[0].to && s.sequence === candidate[0].sequence + 1);
+				if (!nextSegment) break; // failed
+				candidate.unshift(nextSegment)
+				if (candidate[0].to === next_stop?.stop_diva) { // found goal
+					if (count < candidate.length) break; // more direct solution exists
+					count = candidate.length;
+					current_segment = combineSegments(candidate.reverse())
+				}
+			}
+		})
+		//if (current_segment) console.log(debugInfo, "skipping succeeded with", current_segment)
 	}
 
 	if (!current_segment) { // any line
@@ -89,12 +107,8 @@ export function getTramLocation(tram: Tram, lines: Line[]) {
 		}
 	}
 
-	if (!current_segment && next_stop) { // try routing
-
-	}
-
 	if (!current_segment) { // give up, use prev station
-		console.warn(`(${tram.route_name}) missing line segment from ${prev_stop?.stop_diva} to ${next_stop?.stop_diva}`, prev_stop, next_stop);
+		console.warn(`${debugInfo} missing line segment from ${prev_stop?.stop_diva} to ${next_stop?.stop_diva}`, prev_stop, next_stop);
 		let try_prev = segments?.find((s) => s.from == prev_stop?.stop_diva)?.geometry.coordinates[0];
 		return try_prev || [0, 0]; // haha null island tram
 	}
@@ -140,8 +154,30 @@ export function getTramLocation(tram: Tram, lines: Line[]) {
 	return try_prev || [0, 0];
 }
 
-function tramDFS() {
+function combineSegments(segments: Segment[]) : Segment {
+	if (!segments || segments.length === 0) return null;
 
+	let segment : Segment = {
+		from: segments[0].from,
+		to: segments[0].to,
+		direction: segments[0].direction,
+		sequence: segments[0].sequence,
+		geometry: {
+			type: segments[0].geometry.type,
+			coordinates: segments[0].geometry.coordinates,
+		}
+	}
+
+	for (let i = 1; i < segments.length; i++) {
+		let coordinates = segments[i].geometry.coordinates.slice();
+		if (segment.geometry.coordinates[segment.geometry.coordinates.length - 1] == coordinates[0]) {
+			coordinates.shift()
+		}
+		segment.geometry.coordinates = segment.geometry.coordinates.concat(coordinates)
+		segment.to = segments[i].to
+	}
+
+	return segment;
 }
 
 export function userInZurich(userLocation : Coordinate) {

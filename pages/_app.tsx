@@ -39,7 +39,6 @@ function ThemeController({}) {
 	const {theme, setTheme} = useTheme();
 
 	const updateTheme = () => {
-		return setTheme("dark");
 		const s = new Date()
 		const hours = s.getHours()
 		//console.log(hours)
