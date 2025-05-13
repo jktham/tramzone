@@ -4,7 +4,7 @@
 	"scripts": {
 		"dev": "next dev",
 		"build": "next build",
-		"start": "pnpm tsx utils/parse.ts & next start -p $PORT",
+		"start": "pnpm tsx utils/parse.ts && next start -p $PORT",
 		"parse": "pnpm tsx utils/parse.ts"
 	},
 	"dependencies": {
