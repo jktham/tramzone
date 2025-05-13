@@ -5,10 +5,8 @@ let shapefile = require("shapefile");
 import csv from "csv-parser";
 import readline from "node:readline";
 import { convertLV95toWGS84 } from "./mapUtils";
-import { Route, Trip, StopTime, Service, ServiceException, Station, Line, Segment, TramTrip, Tram, TripStatus, StopStatus, HistStop } from "./types";
+import {Route, Trip, StopTime, Service, ServiceException, Station, Line, Segment, TramTrip, Tram, TripStatus, StopStatus, HistStop} from "./types";
 let AsyncLock = require("async-lock");
-import { parser } from 'stream-json';
-import { streamArray } from 'stream-json/streamers/StreamArray';
 
 export const KEY_RT = process.env.KEY_RT || "57c5dbbbf1fe4d000100001842c323fa9ff44fbba0b9b925f0c052d1"; // public default key dw
 export const KEY_SA = process.env.KEY_SA;
@@ -86,7 +84,7 @@ async function parseStations() {
 			coords: convertLV95toWGS84([Number(s[14]), Number(s[15])]),
 		};
 	});
-	stations = stations.filter((s) => s.type && s.type.toLowerCase().includes("tram"));
+	stations = stations.filter((s) => s.type && (s.type.toLowerCase().includes("tram") || s.type.toLowerCase().includes("s-bahn") && s.lines && s.lines.toLowerCase().includes("s18")));
 
 	let ignoredStations = JSON.parse(await fs.readFile(`data/datasets/ignoredStations.json`, "utf-8"));
 	stations = stations.filter((s) => !ignoredStations.includes(s.id));
@@ -102,7 +100,11 @@ async function parseLines() {
 
 	let lines: Line[] = [];
 	for (let feature of geojson.features) {
-		if (feature.properties["BETRIEBS00"]?.includes("VBZ-Tram")) {
+		if (["VBZ-Tram", "Forchbahn"].some(c => feature.properties["BETRIEBS00"]?.includes(c))) {
+
+			// TODO: improve, temporary fix for now
+			if (["12417_", "12419_"].some(id => feature.properties["LINIENSCHL"] === id)) continue;
+
 			let segment: Segment = {
 				from: feature.properties["VONHALTEST"],
 				to: feature.properties["BISHALTEST"],
@@ -112,28 +114,54 @@ async function parseLines() {
 			};
 			segment.geometry.coordinates = segment.geometry.coordinates.map((c) => convertLV95toWGS84(c));
 
-			let found = lines.find((l) => l.id === feature.properties["LINIENSCHL"]);
+			let gtfsLineName = feature.properties["LINIENNUMM"].replace(/\D/g,'')
+
+			let foundLine = lines.find(l => l.name === gtfsLineName);
+			if (!foundLine) {
+				foundLine = {
+					name: gtfsLineName,
+					color: lineColors.find(l => l.name == gtfsLineName)?.color || "#888888",
+					services: []
+				}
+				lines.push(foundLine)
+			}
+
+			let foundService = foundLine.services.find(s => s.id === feature.properties["LINIENSCHL"])
+			if (!foundService) {
+				foundService = {
+					id: feature.properties["LINIENSCHL"],
+					full_name: feature.properties["LINIENNUMM"],
+					start: feature.properties["ANFANGSHAL"],
+					end: feature.properties["ENDHALTEST"],
+					segments: []
+				}
+				foundLine.services.push(foundService)
+			}
+
+			foundService.segments.push(segment)
+
+			/*let found = lines.find((l) => l.id === feature.properties["LINIENSCHL"]);
 			if (found) {
 				found.segments.push(segment);
 			} else {
 				let line: Line = {
 					id: feature.properties["LINIENSCHL"],
-					name: feature.properties["LINIENNUMM"],
-					color: lineColors.find((l) => l.name == feature.properties["LINIENNUMM"])?.color || "#000000",
+					name: lineNumber,
+					color: lineColors.find((l) => l.name == lineNumber)?.color || "#000000",
 					start: feature.properties["ANFANGSHAL"],
 					end: feature.properties["ENDHALTEST"],
 					segments: [segment],
 				};
 				lines.push(line);
-			}
+			}*/
 		}
 	}
 
-	lines.find((l) => l.name == "10").start = "Zürich, Bahnhofplatz/HB";
+	//lines.find(l => l.name == "10").services.find(s => s.full_name == "10").start = "Zürich, Bahnhofplatz/HB";
 	let lineSegmentOverrides = JSON.parse(await fs.readFile(`data/datasets/lineSegments.json`, "utf-8"));
 
 	for (let segmentOverride of lineSegmentOverrides) {
-		let lineSegments = lines.find((l) => l.name == segmentOverride.name).segments;
+		let lineSegments = lines.find(l => l.name == segmentOverride.name).services.find(s => s.full_name == segmentOverride.service_name).segments;
 		let found = lineSegments.find((s) => s.from == segmentOverride.segment.from && s.to == segmentOverride.segment.to);
 		if (found) {
 			lineSegments[lineSegments.indexOf(found)] = segmentOverride.segment;
@@ -144,17 +172,23 @@ async function parseLines() {
 
 	lines.sort((a, b) => Number(a.name) - Number(b.name));
 	for (let line of lines) {
-		line.segments.sort((a, b) => a.sequence - b.sequence);
-		line.segments.sort((a, b) => a.direction - b.direction);
+		line.services.sort((a, b) => Number(a.id.replace("_", "")) - Number(b.id.replace("_", "")));
+		for (let service of line.services) {
+			service.segments.sort((a, b) => a.sequence - b.sequence);
+			service.segments.sort((a, b) => a.direction - b.direction);
+		}
 	}
 
 	let extraLine: Line = {
-		id: "01099_",
 		name: "E",
 		color: lineColors.find((l) => l.name == "E")?.color || "#000000",
-		start: "Extra",
-		end: "Extra",
-		segments: [],
+		services: [{
+			id: "01099_",
+			full_name: "E",
+			start: "Extra",
+			end: "Extra",
+			segments: [],
+		}]
 	};
 	lines.push(extraLine);
 	
@@ -205,7 +239,7 @@ async function parseRoutes(date: string) {
 			agency: r[1]?.replace(/['"]+/g, ""),
 		};
 	});
-	routes = routes.filter((s) => s.type == "900" && s.agency == "3849"); // tram && VBZ
+	routes = routes.filter((s) => s.type == "900" && (s.agency == "3849" || s.agency == "46")); // VBZ-tram || forchbahn
 	await fs.writeFile("data/parsed/routes.json", JSON.stringify(routes));
 }
 

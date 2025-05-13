@@ -19,9 +19,15 @@ export type Segment = {
 }
 
 export type Line = {
-	id: string;
 	name: string;
 	color: string;
+	services: LineService[];
+}
+
+// TODO: come up with better name for line/lineService ...
+export type LineService = {
+	id: string;
+	full_name: string;
 	start: string;
 	end: string;
 	segments: Segment[];
@@ -173,6 +179,8 @@ export type Disruption = {
 	stop: Stop | undefined;
 	message: string;
 }
+
+export type Filter<t> = "ALL" | "NONE" | t | t[];
 
 declare module "react" {
 	interface CSSProperties {
