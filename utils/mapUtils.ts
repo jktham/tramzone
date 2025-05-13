@@ -73,26 +73,23 @@ export function getTramLocation(tram: Tram, lines: Line[]) {
 
 	// TODO: ugly temp forchbahn limbo solution
 	if (!current_segment && segments && prev_stop && next_stop) { // try skipping stop using sequence numbers
-		//console.log(`${debugInfo} tried skipping from ${prev_stop?.stop_name} to ${next_stop?.stop_name}`)
-		const MAX_SKIPPED = 1;
+		const MAX_SKIPPED = 5;
 		let startSegments = segments.filter((s) => s.from == prev_stop?.stop_diva);
 		let count = null;
 		startSegments.forEach(s => {
-			//console.log(debugInfo, s)
 			let candidate = [s]
-			//let seq = s.sequence;
 			for (let i = 0; i < MAX_SKIPPED; i++) {
 				let nextSegment = segments.find(s => s.from === candidate[0].to && s.sequence === candidate[0].sequence + 1);
 				if (!nextSegment) break; // failed
 				candidate.unshift(nextSegment)
 				if (candidate[0].to === next_stop?.stop_diva) { // found goal
-					if (count < candidate.length) break; // more direct solution exists
+					if (count && count < candidate.length) break; // more direct solution exists
 					count = candidate.length;
 					current_segment = combineSegments(candidate.reverse())
 				}
 			}
 		})
-		//if (current_segment) console.log(debugInfo, "skipping succeeded with", current_segment)
+		//if (current_segment) console.log(`${debugInfo} is skipping ${count - 1} stop${count > 2 ? "s" : ""} between ${prev_stop?.stop_name} and ${next_stop?.stop_name}`)
 	}
 
 	if (!current_segment) { // any line
