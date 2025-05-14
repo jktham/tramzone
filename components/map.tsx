@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useRef, forwardRef, memo, useMemo } from "react";
+import { useEffect, useState, useRef, memo, useMemo } from "react";
 import "ol/ol.css";
 import Map from "ol/Map";
 import View from "ol/View";
@@ -10,48 +10,30 @@ import * as OlProj from "ol/proj";
 import VectorLayer from "ol/layer/Vector";
 import VectorSource from "ol/source/Vector";
 import GeoJSON from "ol/format/GeoJSON";
-import {getDisruptions, getLineData, getStationData, getTramData, updateTramProgress, updateTramProgressInterpolated} from "../utils/dataUtils";
+import {getLineData, getStationData, getTramData} from "../utils/dataUtils";
 import Overlay from "ol/Overlay";
 import styles from "../styles/tramMap.module.css";
-import {Filter, Line, Station, Tram} from "../utils/types";
+import {Line, MapOptions, Segment, Station, Target, Tram} from "../utils/types";
 import {Feature, Geolocation} from "ol";
 import {Point} from "ol/geom";
 import {Coordinate} from "ol/coordinate";
 import {Attribution} from "ol/control";
 import {useTheme} from "next-themes";
-import {getExtentFromStations, lineStyle, locationStyle, stationStyle, tramStyle, userInZurich} from "../utils/mapUtils";
-import {FocusOverlay} from "./symbols";
+import {lineStyle, locationStyle, stationStyle, tramStyle, userInZurich} from "../utils/mapUtils";
+import {TargetOverlay} from "./symbols";
 import {MapControlBar, MapControl, MapControlGroup} from "./controls";
 import {GpsFix, Minus, NavigationArrow, Plus} from "@phosphor-icons/react";
 import {DragRotateAndZoom, DblClickDragZoom, defaults as defaultInteractions} from "ol/interaction";
 import {FeatureLike} from "ol/Feature";
+import * as Extent from "ol/extent";
 
-// todo: integrate these somehow
-const timeOffset = 86400000 * -0;
-const histDate = ""; // ex: 2024-12-01 -> set offset to n days ago
+export type ClickTarget = FeatureLike;
 
-
-const TramMap = memo<{
-	onClick: (target: any, userLocation: Geolocation) => void;
-	filter?: {
-		trams?: Filter<string>,
-		lines?: Filter<string>,
-		stations?: Filter<string>
-	};
-	lineData: Line[];
-	stationData: Station[];
-	tramData: Tram[];
-	overlay: any,
-	debug: boolean
-}>(({
-	onClick,
-	filter,
-	lineData,
-	stationData,
-	tramData,
-	overlay,
-	debug
-}) => {
+// TODO: fix a bit to use <> for the type
+const TramMap =  memo((
+	{data, onClick, onUserLocation, onTargetLocation, target, options, overlay, debug}:
+	{ data: { lines: Line[], stations: Station[], trams: Tram[] }; onClick: (target: Target, location: Coordinate) => void; onUserLocation: (location: Coordinate) => void; onTargetLocation: (location: Coordinate) => void; target?: Target, options?: MapOptions; overlay?: any, debug?: boolean }
+) => {
 
 	// STATES AND REFS
 
@@ -65,14 +47,11 @@ const TramMap = memo<{
 	const [userLocationLayer, setUserLocationLayer] = useState<VectorLayer>();
 	const [overlayLayer, setOverlayLayer] = useState<Overlay>();
 
-	const [userLocation, setUserLocation] = useState<Coordinate>(OlProj.fromLonLat([0, 0]));
-	const [prevTramData, setPrevTramData] = useState<Tram[]>();
 	const [geolocation, setGeolocation] = useState<any>();
-	const [focus, setFocus] = useState<FeatureLike>(null);
+	const [userLocation, setUserLocation] = useState<Coordinate>(OlProj.fromLonLat([0, 0]));
 
+	const [targetFeatures, setTargetFeatures] = useState<FeatureLike[]>([]);
 	const [rotation, setRotation] = useState(0);
-
-	const fps = 10;
 
 	const overlayRef = useRef(null);
 
@@ -82,7 +61,7 @@ const TramMap = memo<{
 		zoom: 15,
 		maxZoom: 19,
 		minZoom: 13,
-		extent: getExtentFromStations(stationData)
+		extent: Extent.buffer(Extent.boundingExtent(data.stations.map(s => OlProj.fromLonLat(s.coords))), 3000)
 	});
 
 	// OnClick function to update the view
@@ -91,7 +70,7 @@ const TramMap = memo<{
 		map.getView().animate({
 			center: userLocation,
 			zoom: 16,
-     		duration: 500
+			duration: 500
 		})
 	}
 
@@ -99,7 +78,7 @@ const TramMap = memo<{
 		const oldZoom = map.getView().getZoom();
 		map.getView().animate({
 			zoom: Math.min(oldZoom + 1, map.getView().getMaxZoom()),
-     		duration: 300
+			duration: 300
 		})
 	}
 
@@ -107,14 +86,14 @@ const TramMap = memo<{
 		const oldZoom = map.getView().getZoom();
 		map.getView().animate({
 			zoom: Math.max(oldZoom - 1, map.getView().getMinZoom()),
-     		duration: 300
+			duration: 300
 		})
 	}
 
 	const restoreRotation = () => {
 		map.getView().animate({
 			rotation: 0,
-     		duration: 300
+			duration: 300
 		})
 	}
 
@@ -145,33 +124,33 @@ const TramMap = memo<{
 			className: "lines",
 			visible: true,
 			source: new VectorSource({
-				features: new GeoJSON().readFeatures(getLineData(lineData), {
+				features: new GeoJSON().readFeatures(getLineData(data.lines), {
 					featureProjection: view.getProjection(),
 				}),
 			}),
-			style: lineStyle(filter.lines, focus)
+			style: lineStyle(options.lineFilter, targetFeatures)
 		}))
 
 		setStationLayer(new VectorLayer({
 			className: "stations",
 			visible: true,
 			source: new VectorSource({
-				features: new GeoJSON().readFeatures(getStationData(stationData), {
+				features: new GeoJSON().readFeatures(getStationData(data.stations), {
 					featureProjection: view.getProjection(),
 				}),
 			}),
-			style: stationStyle(filter.stations)
+			style: stationStyle(options.stationFilter)
 		}))
 
 		setTramLayer(new VectorLayer({
 			className: "trams",
 			visible: true,
 			source: new VectorSource({
-				features: new GeoJSON().readFeatures(getTramData(tramData, lineData), {
+				features: new GeoJSON().readFeatures(getTramData(data.trams, data.lines), {
 					featureProjection: view.getProjection(),
 				})
 			}),
-			style: tramStyle(filter.trams)
+			style: tramStyle(options.tramFilter)
 		}))
 
 		setUserLocationLayer(new VectorLayer({
@@ -213,22 +192,21 @@ const TramMap = memo<{
 
 		newMap.on("click", function (e) {
 
-			console.log(OlProj.toLonLat(e.coordinate));
-
 			let candidateFeatures = newMap.getFeaturesAtPixel(e.pixel);
 			let tramCandidate = candidateFeatures.find(f => f.getProperties().type === "tram")
 			let stationCandidate = candidateFeatures.find(f => f.getProperties().type === "station")
 			let lineCandidate = candidateFeatures.find(f => f.getProperties().type === "line")
 
-			if (tramCandidate) console.log(tramCandidate)
-			if (stationCandidate) console.log(stationCandidate)
-			if (lineCandidate) console.log(lineCandidate)
-
 			let selectedFeature = tramCandidate || stationCandidate || (debug ? lineCandidate : undefined)
+			let type = selectedFeature?.getProperties()?.type
 
-			setFocus(selectedFeature)
-			onClick(selectedFeature, geolocation);
-			overlayLayer.setPosition(selectedFeature?.getProperties()?.geometry?.flatCoordinates || e.coordinate)
+			if (debug && type === "line") type = "segment"
+			if (debug) console.log(...candidateFeatures)
+
+			onClick(selectedFeature && {
+				type: type,
+				data: selectedFeature.getProperties()[type]
+			}, selectedFeature?.getProperties()?.geometry?.flatCoordinates || e.coordinate)
 		});
 
 		geolocation.on("change", function (e) {
@@ -248,8 +226,9 @@ const TramMap = memo<{
 
 	// UPDATES
 
-	// location
+	// user location
 	useEffect(() => {
+		onUserLocation(userLocation)
 		userLocationLayer?.setSource(new VectorSource({
 			features: [new Feature({
 				geometry: new Point(userLocation),
@@ -259,37 +238,53 @@ const TramMap = memo<{
 
 	// update filter and focus
 	useEffect(() => {
-		lineLayer?.setStyle(lineStyle(filter.lines, focus))
-		stationLayer?.setStyle(stationStyle(filter.stations))
-		tramLayer?.setStyle(tramStyle(filter.trams))
-	}, [filter, focus]);
+		lineLayer?.setStyle(lineStyle(options.lineFilter, targetFeatures))
+		stationLayer?.setStyle(stationStyle(options.stationFilter))
+		tramLayer?.setStyle(tramStyle(options.tramFilter))
+	}, [options, target]);
 
 	// tram position
 	useEffect(() => {
-		const interval = setInterval(() => {
-			let newTramData = updateTramProgressInterpolated(tramData, prevTramData, new Date().getTime() + timeOffset);
-			tramLayer?.setSource(new VectorSource({
-				features: new GeoJSON().readFeatures(getTramData(newTramData, lineData), {
-					featureProjection: view.getProjection(),
-				})
-			}))
-			setPrevTramData(JSON.parse(JSON.stringify(newTramData)));
-		}, 1000 / fps);
-		return () => {
-			clearInterval(interval)
-		};
-	}, [tramData, prevTramData]);
+		tramLayer?.setSource(new VectorSource({
+			features: new GeoJSON().readFeatures(getTramData(data.trams, data.lines), {
+				featureProjection: view.getProjection(),
+			})
+		}))
+	}, [data.trams]);
 
-	// overlay position
+	// target
+	const updateTargetFeaturesAndLocation = (types?: ("station" | "line" | "segment" | "tram")[]) => {
+		if (!target || (types && !types.includes(target.type))) return;
+
+		let features = []
+		if (target.type === "station" && stationLayer) features = stationLayer.getSource().getFeatures().filter(f => f.getProperties().station === (target.data as Station))
+		if (target.type === "line" && lineLayer) features = lineLayer.getSource().getFeatures().filter(f => f.getProperties().line === (target.data as Line))
+		if (target.type === "segment" && lineLayer) features = lineLayer.getSource().getFeatures().filter(f => f.getProperties().segment === (target.data as Segment))
+		if (target.type === "tram" && tramLayer) features = tramLayer.getSource().getFeatures().filter(f => f.getProperties().tram.trip_id === (target.data as Tram).trip_id)
+
+		let location = features?.[0]?.getProperties()?.geometry?.flatCoordinates
+		if (["line", "segment"].includes(target.type)) {
+			let extent = features.map(f => f.getProperties().geometry.extent_).reduce((p, c) => Extent.extend(p, c), Extent.createEmpty())
+			location = Extent.getCenter(extent)
+		}
+		onTargetLocation(location)
+		overlayLayer?.setPosition(location)
+		setTargetFeatures(features)
+	}
 	useEffect(() => {
-		const interval = setInterval(() => {
-			if (focus?.getProperties()?.type === "tram")
-				overlayLayer?.setPosition(tramLayer?.getSource().getFeatures().find(f => f.getProperties().trip_id === focus?.getProperties().trip_id)?.getProperties()?.geometry?.flatCoordinates)
-		}, 1000 / fps);
-		return () => {
-			clearInterval(interval)
-		};
-	}, [focus]);
+		if (!target) return setTargetFeatures([]);
+		updateTargetFeaturesAndLocation()
+	}, [target]);
+	useEffect(() => {
+		updateTargetFeaturesAndLocation(["station"])
+	}, [data.stations]);
+	useEffect(() => {
+		updateTargetFeaturesAndLocation(["line", "segment"])
+	}, [data.lines]);
+	useEffect(() => {
+		updateTargetFeaturesAndLocation(["tram"])
+	}, [data.trams]);
+
 
 	// rotation
 	useEffect(() => {
@@ -314,11 +309,13 @@ const TramMap = memo<{
 						<MapControl onClick={decreaseZoom}><Minus color={"var(--FG1)"} weight={"bold"} size={16}></Minus></MapControl>
 					</MapControlGroup>
 					<MapControl hidden={!userInZurich(userLocation)} onClick={centerView}><GpsFix color={"var(--LOC)"} weight={"bold"} size={16}></GpsFix></MapControl>
-					<MapControl hidden={Math.abs(rotation) < 0.01} onClick={restoreRotation}><div style={{height: "16px", transform: "rotate(" + rotation + "rad)"/*, transition: "transform .3s"*/}}><NavigationArrow style={{transform: "rotate(45deg)"}} color={"var(--FG1)"} weight={"bold"} size={16}></NavigationArrow></div></MapControl>
+					<MapControl hidden={Math.abs(rotation) < 0.01} onClick={restoreRotation}>
+						<div style={{height: "16px", transform: "rotate(" + rotation + "rad)"/*, transition: "transform .3s"*/}}><NavigationArrow style={{transform: "rotate(45deg)"}} color={"var(--FG1)"} weight={"bold"} size={16}></NavigationArrow></div>
+					</MapControl>
 				</MapControlBar>
 			</div>
 			<div ref={overlayRef}>
-				<div className={styles.focus}>{focus && !(focus.getProperties().type === "line") && <FocusOverlay data={focus.getProperties()}></FocusOverlay>}</div>
+				<div className={styles.target}>{target && (["tram", "station"].includes(target.type)) && <TargetOverlay target={target}></TargetOverlay>}</div>
 				<div className={styles.overlay}>{overlay}</div>
 			</div>
 			<div className={styles.map} id="map"/>
@@ -326,8 +323,4 @@ const TramMap = memo<{
 	);
 })
 
-export {
-	TramMap,
-	timeOffset,
-	histDate,
-}
+export default TramMap;

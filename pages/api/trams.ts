@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import fs from "node:fs/promises";
-import { Service, ServiceException, Station, StopStatus, Tram, TramTrip, TripStatus, TripUpdate, Stop } from "../../utils/types";
+import {Service, ServiceException, Station, StopStatus, Tram, TramTrip, TripStatus, TripUpdate, Stop, Line} from "../../utils/types";
 import { getDatestring, parseData, ENDPOINT_RT, KEY_RT } from "../../utils/parseUtils"
 import { existsSync } from "node:fs";
 import { updateTramProgress } from "../../utils/dataUtils";
@@ -60,6 +60,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 			}
 		}
 	}
+
+	let lines: Line[] = JSON.parse(await fs.readFile("data/parsed/lines.json", "utf-8"))
 
 	let realtime: any = query.static ? {"entity": []} : null;
 
@@ -186,6 +188,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 			trip_name: t.trip_name,
 			trip_status: update?.trip_status || "scheduled",
 			headsign: t.headsign,
+			color: lines.find(l => l.name === t.route_name).color,
 			direction: t.direction,
 			route_id: t.route_id,
 			route_name: t.route_name,

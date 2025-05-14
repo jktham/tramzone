@@ -1,9 +1,13 @@
 import styles from "../styles/symbols.module.css"
+import {Target, Line, Segment, Station, Tram} from "../utils/types";
+import {FeatureLike} from "ol/Feature";
+import {memo} from "react";
+import {isLine, isStation, isTram} from "../pages";
 
-export function LineSymbol({data}: { data: any }) {
+export function LineSymbol({target}: { target: Target }) {
 
 	return <>
-		<span style={{background: data.color}} className={styles.lineSymbol}>{data.route_name || data.name}</span>
+		<span style={{background: isLine(target)?.color || isTram(target)?.color}} className={styles.lineSymbol}>{isTram(target)?.route_name || isLine(target)?.name}</span>
 	</>
 }
 
@@ -18,34 +22,28 @@ export function StationSymbol({data}: { data: any }) {
 	</>
 }
 
-export function TramDot({data}: { data: any }) {
+export function TramDot({tram}: { tram: Tram }) {
 
 	return (
-		<span className={styles.tramDot}><span style={{background: data.color}}></span></span>
+		<span className={styles.tramDot}><span style={{background: tram.color}}></span></span>
 	)
 }
 
-export function StationDot({data}: { data: any }) {
+export function StationDot({station}: { station: Station }) {
 
 	return (
 		<span className={styles.stationDot}><span></span></span>
 	)
 }
 
-export function FocusOverlay({data}: { data: any }) {
-
-
-	const type = data.type
-	const isTram = type === "tram";
-	const isStation = type === "station";
-
-	const title = data.trip_name || data.name.split(",").pop().trim()
+export const TargetOverlay = memo(({target}: { target: Target }) => {
+	const title = (isTram(target)?.trip_name) || (isStation(target)?.name?.split(",")?.pop()?.trim())
 
 	return <>
-		<div className={styles.focusOverlay}>
+		<div className={styles.targetOverlay}>
 			<div className={styles.text}>{title}</div>
-			{isTram && <TramDot data={data}></TramDot>}
-			{isStation && <StationDot data={data}></StationDot>}
+			{isTram(target) && <TramDot tram={isTram(target)}></TramDot>}
+			{isStation(target) && <StationDot station={isStation(target)}></StationDot>}
 		</div>
 	</>
-}
+})
