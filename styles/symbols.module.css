@@ -112,13 +112,13 @@
 	flex-shrink: 0;
 }
 
-.focusOverlay {
+.targetOverlay {
 	width: 1px;
 	height: 1px;
 	z-index: 2;
 }
 
-.focusOverlay .text {
+.targetOverlay .text {
 	position: absolute;
 	top: -12px;
 	left: -12px;

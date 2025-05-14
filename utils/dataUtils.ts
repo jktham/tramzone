@@ -3,14 +3,13 @@ import {Station, Line, Tram, Disruption, Filter} from "./types";
 
 export function getStationData(data: Station[]) {
 	let geoJson = {type: "FeatureCollection", features: []};
-	let additionalContent = {type: "station"};
 	for (let station of data) {
 		let feature = {
 			type: "Feature",
 			geometry: {type: "Point", coordinates: station.coords},
 			properties: {
-				...station,
-				...additionalContent
+				type: "station",
+				station: station,
 			},
 		};
 		geoJson.features.push(feature);
@@ -22,14 +21,13 @@ export function getLineData(data: Line[]) {
 	let geoJSON = {type: "FeatureCollection", features: []};
 	for (let line of data) {
 		for (let segment of line.segments) {
-			let additionalContent = {type: "line"};
 			let feature = {
 				type: "Feature",
 				geometry: segment.geometry,
-				properties: { // TODO: better structure & types for properties
+				properties: {
+					type: "line",
 					segment: segment,
-					...line,
-					...additionalContent
+					line: line
 				},
 			};
 			geoJSON.features.push(feature);
@@ -41,7 +39,6 @@ export function getLineData(data: Line[]) {
 export function getTramData(data: Tram[], line: Line[]) {
 	let geoJSON = {type: "FeatureCollection", features: []};
 	for (let tram of data) {
-		let additionalContent = {type: "tram", color: line.find((l) => l.name == tram.route_name)?.color, name: tram.route_name}
 		let feature = {
 			type: "Feature",
 			geometry: {
@@ -49,8 +46,8 @@ export function getTramData(data: Tram[], line: Line[]) {
 				coordinates: getTramLocation(tram, line),
 			},
 			properties: {
-				...tram,
-				...additionalContent
+				type: "tram",
+				tram: tram
 			},
 		};
 		geoJSON.features.push(feature);
@@ -60,13 +57,12 @@ export function getTramData(data: Tram[], line: Line[]) {
 
 // let jumpCount = 0;
 // todo: figure out how to actually smooth out sudden delay changes, just prevents backwards jumps for now
-export function updateTramProgressInterpolated(trams: Tram[], prevTrams: Tram[], time: number): Tram[] {
+export function updateTramProgressInterpolated(trams: Tram[], prev: Tram[], time: number): Tram[] {
 	trams = updateTramProgress(trams, time);
-	if (!prevTrams) {
-		return trams;
-	}
+	if (!prev) return trams;
+
 	let prevTramsMap: Map<string, Tram> = new Map();
-	prevTrams.map((t) => {
+	prev.map((t) => {
 		prevTramsMap.set(t.trip_name, t);
 	});
 	for (let tram of trams) {
@@ -82,6 +78,7 @@ export function updateTramProgressInterpolated(trams: Tram[], prevTrams: Tram[],
 }
 
 export function updateTramProgress(trams: Tram[], time: number): Tram[] {
+	trams = trams.slice()
 	for (let tram of trams) {
 		tram.progress = 0;
 		// sequence progress

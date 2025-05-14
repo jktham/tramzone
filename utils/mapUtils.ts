@@ -6,7 +6,7 @@ import * as OlProj from "ol/proj";
 import {Coordinate} from "ol/coordinate";
 import {containedInFilter} from "./dataUtils";
 import {FeatureLike} from "ol/Feature";
-import {Extent, containsCoordinate} from "ol/extent";
+import {containsCoordinate} from "ol/extent";
 
 export function grayscaleLayer(context) {
 	let canvas = context.canvas;
@@ -151,10 +151,10 @@ export function getTramLocation(tram: Tram, lines: Line[]) {
 	return try_prev || [0, 0];
 }
 
-function combineSegments(segments: Segment[]) : Segment {
+function combineSegments(segments: Segment[]): Segment {
 	if (!segments || segments.length === 0) return null;
 
-	let segment : Segment = {
+	let segment: Segment = {
 		from: segments[0].from,
 		to: segments[0].to,
 		direction: segments[0].direction,
@@ -177,103 +177,98 @@ function combineSegments(segments: Segment[]) : Segment {
 	return segment;
 }
 
-export function userInZurich(userLocation : Coordinate) {
-	return containsCoordinate(OlProj.fromLonLat([8.5417-0.15, 47.3769-0.08]).concat(OlProj.fromLonLat([8.5417+0.15, 47.3769+0.08])), userLocation)
-}
-
-export function getExtentFromStations(stations : Station[]) : Extent {
-	let s0 = stations[0]
-	let ext : Extent = [s0.coords[0], s0.coords[1], s0.coords[0], s0.coords[1]];
-	stations.forEach(s => ext = [Math.min(ext[0], s.coords[0]), Math.min(ext[1], s.coords[1]), Math.max(ext[2], s.coords[0]), Math.max(ext[3], s.coords[1])])
-	ext = [ext[0] - 0.03, ext[1] - 0.02, ext[2] + 0.03, ext[3] + 0.02]
-	return OlProj.fromLonLat([ext[0], ext[1]]).concat(OlProj.fromLonLat([ext[2], ext[3]]))
+export function userInZurich(userLocation: Coordinate) {
+	return containsCoordinate(OlProj.fromLonLat([8.5417 - 0.15, 47.3769 - 0.08]).concat(OlProj.fromLonLat([8.5417 + 0.15, 47.3769 + 0.08])), userLocation)
 }
 
 // STYLES
 
-export const tramStyle = (filter : Filter<string>)=> (feature: Feature) => containedInFilter(feature.getProperties().name, filter) ? [
-	new Style({
-		image: new Circle({
-			radius: 8,
-			fill: new Fill({
-				color: feature.get("color"),
+export const tramStyle = (filter: Filter<string>) => (feature: Feature) =>
+	containedInFilter(feature.getProperties().tram.route_name, filter) ? [
+		new Style({
+			image: new Circle({
+				radius: 8,
+				fill: new Fill({
+					color: feature.getProperties().tram.color,
+				}),
+				stroke: new Stroke({
+					width: 3,
+					color: getComputedStyle(document.documentElement).getPropertyValue('--BG2')
+				})
+			})
+		}),
+		new Style({
+			image: new Circle({
+				radius: 20,
+				fill: new Fill({
+					color: "transparent"
+				}),
 			}),
-			stroke: new Stroke({
-				width: 3,
-				color: getComputedStyle(document.documentElement).getPropertyValue('--BG2')
+		}),
+	] : []
+
+export const stationStyle = (filter: Filter<string>) => (feature: Feature) =>
+	containedInFilter(feature.getProperties().station.name, filter) ? [
+		new Style({
+			image: new Circle({
+				radius: 5,
+				fill: new Fill({
+					color: getComputedStyle(document.documentElement).getPropertyValue('--BG2')
+				}),
+				stroke: new Stroke({
+					width: 3,
+					color: getComputedStyle(document.documentElement).getPropertyValue('--FG2')
+				})
+			})
+		}),
+		new Style({
+			image: new Circle({
+				radius: 20,
+				fill: new Fill({
+					color: "transparent"
+				}),
 			})
 		})
-	}),
-	new Style({
-		image: new Circle({
-			radius: 20,
-			fill: new Fill({
-				color: "transparent"
-			}),
-		}),
-	}),
-] : []
+	] : []
 
-export const stationStyle = (filter : Filter<string>)=> (feature: Feature) => containedInFilter(feature.getProperties().name, filter) ? [
-	new Style({
-		image: new Circle({
-			radius: 5,
-			fill: new Fill({
-				color: getComputedStyle(document.documentElement).getPropertyValue('--BG2')
-			}),
-			stroke: new Stroke({
-				width: 3,
-				color: getComputedStyle(document.documentElement).getPropertyValue('--FG2')
-			})
-		})
-	}),
-	new Style({
-		image: new Circle({
-			radius: 20,
-			fill: new Fill({
-				color: "transparent"
-			}),
-		})
-	})
-] : []
-
-export const lineStyle = (filter : Filter<string>, focus : FeatureLike)=> (feature: Feature) => {
-
-	return containedInFilter(feature.getProperties().name, filter) ? ((feature === focus) ? [
+export const lineStyle = (filter: Filter<string>, focusFeatures: FeatureLike[]) => (feature: Feature) =>
+	containedInFilter(feature.getProperties().line.name, filter) ? (focusFeatures.includes(feature) ? [
 		new Style({
 			stroke: new Stroke({
-				width: 9,
-				color: getComputedStyle(document.documentElement).getPropertyValue('--BG4'),
+				width: 15,
+				color: "#00000001",
 			}),
+			zIndex: 100
 		}),
 		new Style({
 			stroke: new Stroke({
-				width: 3,
-				color: feature.get("color"),
+				width: 12,
+				lineCap: 'butt',
+				color: getComputedStyle(document.documentElement).getPropertyValue('--BG2'),
 			}),
+			zIndex: 101
 		}),
-
 		new Style({
 			stroke: new Stroke({
-				width: 10,
-				color: "transparent",
+				width: 6,
+				color: feature.getProperties().line.color,
 			}),
-		})
+			zIndex: 102
+		}),
 	] : [
 		new Style({
 			stroke: new Stroke({
-				width: 3,
-				color: feature.get("color"),
+				width: 15,
+				color: "#00000001",
 			}),
 		}),
 		new Style({
 			stroke: new Stroke({
-				width: 10,
-				color: "transparent",
+				width: 3,
+				color: feature.getProperties().line.color,
 			}),
-		})
+		}),
 	]) : []
-}
 
 export const locationStyle = (feature: Feature) => [
 	new Style({

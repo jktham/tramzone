@@ -131,6 +131,7 @@ export type Tram = {
 	trip_name: string;
 	trip_status: TripStatus;
 	headsign: string;
+	color: string;
 	direction: number;
 	route_id: string;
 	route_name: string;
@@ -138,7 +139,7 @@ export type Tram = {
 	service_days: number[];
 	progress: number; // progress as float corresponding to stop sequence
 	delay: number; // current delay to next stop
-	active: boolean; // arrived at first stop and hasnt departed last stop
+	active: boolean; // arrived at first stop and hasn't departed last stop
 	stops: Stop[];
 }
 
@@ -175,6 +176,17 @@ export type Disruption = {
 }
 
 export type Filter<t> = "ALL" | "NONE" | t | t[];
+
+export type MapOptions = {
+	stationFilter?: Filter<string>;
+	lineFilter?: Filter<string>;
+	tramFilter?: Filter<string>
+}
+
+export type Target = {
+	type: "station" | "line" | "segment" | "tram";
+	data: Station | Line | Segment | Tram;
+}
 
 declare module "react" {
 	interface CSSProperties {
