@@ -8,7 +8,10 @@ export function getStationData(data: Station[]) {
 		let feature = {
 			type: "Feature",
 			geometry: {type: "Point", coordinates: station.coords},
-			properties: {...station, ...additionalContent},
+			properties: {
+				...station,
+				...additionalContent
+			},
 		};
 		geoJson.features.push(feature);
 	}
@@ -18,37 +21,37 @@ export function getStationData(data: Station[]) {
 export function getLineData(data: Line[]) {
 	let geoJSON = {type: "FeatureCollection", features: []};
 	for (let line of data) {
-		for (let service of line.services) {
-			for (let segment of service.segments) {
-				let additionalContent = {type: "line"};
-				let feature = {
-					type: "Feature",
-					geometry: segment.geometry,
-					properties: { // TODO: better structure & types for properties
-						segment: segment,
-						...line,
-						...service,
-						...additionalContent
-					},
-				};
-				geoJSON.features.push(feature);
-			}
+		for (let segment of line.segments) {
+			let additionalContent = {type: "line"};
+			let feature = {
+				type: "Feature",
+				geometry: segment.geometry,
+				properties: { // TODO: better structure & types for properties
+					segment: segment,
+					...line,
+					...additionalContent
+				},
+			};
+			geoJSON.features.push(feature);
 		}
 	}
 	return geoJSON;
 };
 
-export function getTramData(data: Tram[], lineData: Line[]) {
+export function getTramData(data: Tram[], line: Line[]) {
 	let geoJSON = {type: "FeatureCollection", features: []};
 	for (let tram of data) {
-		let additionalContent = {type: "tram", color: lineData.find((l) => l.name == tram.route_name)?.color, name: tram.route_name}
+		let additionalContent = {type: "tram", color: line.find((l) => l.name == tram.route_name)?.color, name: tram.route_name}
 		let feature = {
 			type: "Feature",
 			geometry: {
 				type: "Point",
-				coordinates: getTramLocation(tram, lineData),
+				coordinates: getTramLocation(tram, line),
 			},
-			properties: {...tram, ...additionalContent},
+			properties: {
+				...tram,
+				...additionalContent
+			},
 		};
 		geoJSON.features.push(feature);
 	}
@@ -141,6 +144,6 @@ export function getAverageDelay(trams: Tram[]): number {
 	return sum / count;
 }
 
-export function containedInFilter<T>(object : T, filter : Filter<T>): boolean {
+export function containedInFilter<T>(object: T, filter: Filter<T>): boolean {
 	return filter === "ALL" || filter === object || filter instanceof Array && filter.includes(object);
 }

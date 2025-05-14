@@ -1,12 +1,12 @@
-import {Tram, Line, Filter, Segment} from "./types";
+import {Tram, Line, Filter, Segment, Station} from "./types";
 import Style from "ol/style/Style";
 import {Circle, Fill, Stroke} from "ol/style";
 import {Feature} from "ol";
-import * as Extent from "ol/extent";
 import * as OlProj from "ol/proj";
 import {Coordinate} from "ol/coordinate";
 import {containedInFilter} from "./dataUtils";
 import {FeatureLike} from "ol/Feature";
+import {Extent, containsCoordinate} from "ol/extent";
 
 export function grayscaleLayer(context) {
 	let canvas = context.canvas;
@@ -61,7 +61,7 @@ export function getTramLocation(tram: Tram, lines: Line[]) {
 	let next_stop = tram.stops.find((s) => s.stop_sequence == Math.floor(tram.progress + 1));
 
 	// current line
-	let segments = lines.find((l) => l.name == tram.route_name)?.services[0]?.segments;
+	let segments = lines.find((l) => l.name == tram.route_name)?.segments;
 	let current_segment = segments?.find((s) => s.from == prev_stop?.stop_diva && s.to == next_stop?.stop_diva);
 
 	if (!next_stop) { // last stop?
@@ -93,7 +93,7 @@ export function getTramLocation(tram: Tram, lines: Line[]) {
 	}
 
 	if (!current_segment) { // any line
-		segments = lines.flatMap((l) => l.services[0].segments);
+		segments = lines.flatMap((l) => l.segments);
 		current_segment = segments?.find((s) => s.from == prev_stop?.stop_diva && s.to == next_stop?.stop_diva);
 	}
 
@@ -178,7 +178,15 @@ function combineSegments(segments: Segment[]) : Segment {
 }
 
 export function userInZurich(userLocation : Coordinate) {
-	return Extent.containsCoordinate(OlProj.fromLonLat([8.5417-0.15, 47.3769-0.08]).concat(OlProj.fromLonLat([8.5417+0.15, 47.3769+0.08])), userLocation)
+	return containsCoordinate(OlProj.fromLonLat([8.5417-0.15, 47.3769-0.08]).concat(OlProj.fromLonLat([8.5417+0.15, 47.3769+0.08])), userLocation)
+}
+
+export function getExtentFromStations(stations : Station[]) : Extent {
+	let s0 = stations[0]
+	let ext : Extent = [s0.coords[0], s0.coords[1], s0.coords[0], s0.coords[1]];
+	stations.forEach(s => ext = [Math.min(ext[0], s.coords[0]), Math.min(ext[1], s.coords[1]), Math.max(ext[2], s.coords[0]), Math.max(ext[3], s.coords[1])])
+	ext = [ext[0] - 0.03, ext[1] - 0.02, ext[2] + 0.03, ext[3] + 0.02]
+	return OlProj.fromLonLat([ext[0], ext[1]]).concat(OlProj.fromLonLat([ext[2], ext[3]]))
 }
 
 // STYLES
