@@ -6,6 +6,7 @@ import csv from "csv-parser";
 import readline from "node:readline";
 import { convertLV95toWGS84 } from "./mapUtils";
 import {Route, Trip, StopTime, Service, ServiceException, Station, Line, Segment, TramTrip, Tram, TripStatus, StopStatus, HistStop} from "./types";
+import {Extent} from "ol/extent";
 let AsyncLock = require("async-lock");
 
 export const KEY_RT = process.env.KEY_RT || "57c5dbbbf1fe4d000100001842c323fa9ff44fbba0b9b925f0c052d1"; // public default key dw
@@ -114,81 +115,49 @@ async function parseLines() {
 			};
 			segment.geometry.coordinates = segment.geometry.coordinates.map((c) => convertLV95toWGS84(c));
 
-			let gtfsLineName = feature.properties["LINIENNUMM"].replace(/\D/g,'')
+			let name = feature.properties["LINIENNUMM"].replace(/\D/g,'')
 
-			let foundLine = lines.find(l => l.name === gtfsLineName);
-			if (!foundLine) {
-				foundLine = {
-					name: gtfsLineName,
-					color: lineColors.find(l => l.name == gtfsLineName)?.color || "#888888",
-					services: []
-				}
-				lines.push(foundLine)
-			}
-
-			let foundService = foundLine.services.find(s => s.id === feature.properties["LINIENSCHL"])
-			if (!foundService) {
-				foundService = {
+			let line = lines.find((l) => l.id === feature.properties["LINIENSCHL"]);
+			if (!line) {
+				line = {
 					id: feature.properties["LINIENSCHL"],
-					full_name: feature.properties["LINIENNUMM"],
+					name: name,
+					color: lineColors.find((l) => l.name == name)?.color || "#888888",
 					start: feature.properties["ANFANGSHAL"],
 					end: feature.properties["ENDHALTEST"],
-					segments: []
+					segments: [],
 				}
-				foundLine.services.push(foundService)
+				lines.push(line)
 			}
-
-			foundService.segments.push(segment)
-
-			/*let found = lines.find((l) => l.id === feature.properties["LINIENSCHL"]);
-			if (found) {
-				found.segments.push(segment);
-			} else {
-				let line: Line = {
-					id: feature.properties["LINIENSCHL"],
-					name: lineNumber,
-					color: lineColors.find((l) => l.name == lineNumber)?.color || "#000000",
-					start: feature.properties["ANFANGSHAL"],
-					end: feature.properties["ENDHALTEST"],
-					segments: [segment],
-				};
-				lines.push(line);
-			}*/
+			line.segments.push(segment);
 		}
 	}
 
-	//lines.find(l => l.name == "10").services.find(s => s.full_name == "10").start = "Zürich, Bahnhofplatz/HB";
 	let lineSegmentOverrides = JSON.parse(await fs.readFile(`data/datasets/lineSegments.json`, "utf-8"));
 
-	for (let segmentOverride of lineSegmentOverrides) {
-		let lineSegments = lines.find(l => l.name == segmentOverride.name).services.find(s => s.full_name == segmentOverride.service_name).segments;
-		let found = lineSegments.find((s) => s.from == segmentOverride.segment.from && s.to == segmentOverride.segment.to);
-		if (found) {
-			lineSegments[lineSegments.indexOf(found)] = segmentOverride.segment;
+	for (let override of lineSegmentOverrides) {
+		let segments = lines.find(l => l.name == override.name).segments;
+		let segment = segments.find((s) => s.from == override.segment.from && s.to == override.segment.to);
+		if (segment) {
+			segments[segments.indexOf(segment)] = override.segment;
 		} else {
-			lineSegments.push(segmentOverride.segment);
+			segments.push(override.segment);
 		}
 	}
 
-	lines.sort((a, b) => Number(a.name) - Number(b.name));
+	lines.sort((a, b) => Number(a.id.replace("_", "")) - Number(b.id.replace("_", "")));
 	for (let line of lines) {
-		line.services.sort((a, b) => Number(a.id.replace("_", "")) - Number(b.id.replace("_", "")));
-		for (let service of line.services) {
-			service.segments.sort((a, b) => a.sequence - b.sequence);
-			service.segments.sort((a, b) => a.direction - b.direction);
-		}
+		line.segments.sort((a, b) => a.sequence - b.sequence);
+		line.segments.sort((a, b) => a.direction - b.direction);
 	}
 
 	let extraLine: Line = {
+		id: "01099_",
 		name: "E",
 		color: lineColors.find((l) => l.name == "E")?.color || "#000000",
-		services: [{
-			id: "01099_",
-			full_name: "E",
-			start: "Extra",
-			end: "Extra",
-			segments: [],
-		}]
+		start: "Extra",
+		end: "Extra",
+		segments: [],
 	};
 	lines.push(extraLine);
 	

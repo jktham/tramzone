@@ -1,7 +1,6 @@
 [
 	{
 		"name": "11",
-		"service_name": "11",
 		"segment": {
 			"from": 2879,
 			"to": 1138,
@@ -140,7 +139,6 @@
 	},
 	{
 		"name": "11",
-		"service_name": "11",
 		"segment": {
 			"from": 6461,
 			"to": 6459,
@@ -351,7 +349,6 @@
 	},
 	{
 		"name": "18",
-		"service_name": "S18",
 		"segment": {
 			"from": 1453,
 			"to": 3039,

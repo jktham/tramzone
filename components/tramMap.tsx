@@ -19,7 +19,7 @@ import {Point} from "ol/geom";
 import {Coordinate} from "ol/coordinate";
 import {Attribution} from "ol/control";
 import {useTheme} from "next-themes";
-import {lineStyle, locationStyle, stationStyle, tramStyle, userInZurich} from "../utils/mapUtils";
+import {getExtentFromStations, lineStyle, locationStyle, stationStyle, tramStyle, userInZurich} from "../utils/mapUtils";
 import {FocusOverlay} from "./symbols";
 import {MapControlBar, MapControl, MapControlGroup} from "./controls";
 import {GpsFix, Minus, NavigationArrow, Plus} from "@phosphor-icons/react";
@@ -82,8 +82,7 @@ const TramMap = memo<{
 		zoom: 15,
 		maxZoom: 19,
 		minZoom: 13,
-		//extent: OlProj.fromLonLat([8.5417-0.15, 47.3769-0.08]).concat(OlProj.fromLonLat([8.5417+0.15, 47.3769+0.08]))
-		extent: OlProj.fromLonLat([8.434571348267301, 47.28091645062872]).concat(OlProj.fromLonLat([8.718285360198345, 47.45672784732389]))
+		extent: getExtentFromStations(stationData)
 	});
 
 	// OnClick function to update the view
