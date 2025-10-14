@@ -61,7 +61,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 		}
 	}
 
-	let realtime: any = query.static ? {"Entity": []} : null;
+	let realtime: any = query.static ? {"entity": []} : null;
 
 	// check for recent cached rt
 	if (!realtime) {
@@ -89,11 +89,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
 			if (realtime && !realtime?.error) {
 				let tripIds: Set<string> = new Set(tramTrips.map((t) => t.trip_id));
-				let rt = {"Entity": realtime["Entity"].filter((e) => tripIds.has(e["Id"]))};
+				let rt = {"entity": realtime["entity"].filter((e) => tripIds.has(e["id"]))};
 				await fs.writeFile("data/gtfs/realtime.json", JSON.stringify({"time": time, "data": rt}));
 			}
-		} catch {
-			console.log("rt timed out: ", realtime);
+		} catch(e) {
+			console.log("rt timed out: ", realtime, e);
 			realtime = null;
 		}
 	}
@@ -107,28 +107,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
 			// one more for good measure
 			if (!realtime) {
-				realtime = {"Entity": []};
+				realtime = {"entity": []};
 				await fs.rm("data/gtfs/realtime.json"); // get rid of broken file
 			}
 		} else {
-			realtime = {"Entity": []};
+			realtime = {"entity": []};
 		}
 	}
 
 	let tripIds: Set<string> = new Set(tramTrips.map((t) => t.trip_id));
-	let tripUpdates: TripUpdate[] = realtime["Entity"].filter((e) => tripIds.has(e["Id"])).map((t) => {
+	let tripUpdates: TripUpdate[] = realtime["entity"].filter((e) => tripIds.has(e["id"])).map((t) => {
 		return {
-			trip_id: t["TripUpdate"]["Trip"]["TripId"],
-			trip_time: t["TripUpdate"]["Trip"]["StartTime"],
-			trip_date: t["TripUpdate"]["Trip"]["StartDate"],
-			trip_status: String(t["TripUpdate"]["Trip"]["ScheduleRelationship"] || "scheduled").toLowerCase(),
-			stops: t["TripUpdate"]["StopTimeUpdate"]?.map((u) => {
+			trip_id: t["tripUpdate"]["trip"]["tripId"],
+			trip_time: t["tripUpdate"]["trip"]["startTime"],
+			trip_date: t["tripUpdate"]["trip"]["startDate"],
+			trip_status: String(t["tripUpdate"]["trip"]["scheduleRelationship"] || "scheduled").toLowerCase(),
+			stops: t["tripUpdate"]["stopTimeUpdate"]?.map((u) => {
 				return {
-					stop_id: u["StopId"],
-					stop_sequence: u["StopSequence"],
-					stop_status: String(u["ScheduleRelationship"] || "scheduled").toLowerCase(),
-					arrival_delay: u["Arrival"] ? u["Arrival"]["Delay"] : 0,
-					departure_delay: u["Departure"] ? u["Departure"]["Delay"] : 0,
+					stop_id: u["stopId"],
+					stop_sequence: u["stopSequence"],
+					stop_status: String(u["scheduleRelationship"] || "scheduled").toLowerCase(),
+					arrival_delay: u["arrival"] ? u["arrival"]["delay"] : 0,
+					departure_delay: u["departure"] ? u["departure"]["delay"] : 0,
 				};
 			}),
 		};
