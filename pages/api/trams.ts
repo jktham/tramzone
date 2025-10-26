@@ -196,7 +196,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 			stops: t.stops.map((s) => {
 				let station: Station | undefined = stationsMap.get(Number(s.stop_id.split(":")[0]));
 				let u = update?.stops?.find((us) => us.stop_id == s.stop_id);
-				let offset = 2 * 3600000; // todo: switch to cest automatically
+				let offset = 1 * 3600000; // todo: switch to cest automatically
 				return {
 					stop_id: s.stop_id,
 					stop_diva: station?.diva || 0,
