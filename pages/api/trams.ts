@@ -116,7 +116,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 	}
 
 	let tripIds: Set<string> = new Set(tramTrips.map((t) => t.trip_id));
-	let tripUpdates: TripUpdate[] = realtime["entity"].filter((e) => tripIds.has(e["id"])).map((t) => {
+	let tripUpdates: TripUpdate[] = realtime["entity"].filter((e) => tripIds.has(e["id"].split("|")[0])).map((t) => {
 		return {
 			trip_id: t["tripUpdate"]["trip"]["tripId"],
 			trip_time: t["tripUpdate"]["trip"]["startTime"],
