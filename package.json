@@ -8,18 +8,18 @@
 		"parse": "pnpm tsx utils/parse.ts"
 	},
 	"dependencies": {
-		"@phosphor-icons/react": "^2.1.7",
+		"@phosphor-icons/react": "^2.1.10",
 		"async-lock": "^1.4.1",
 		"clsx": "^2.1.1",
-		"csv-parser": "^3.0.0",
-		"next": "^15.1.2",
+		"csv-parser": "^3.2.0",
+		"next": "^15.5.7",
 		"next-themes": "^0.2.1",
-		"ol": "^10.3.1",
+		"ol": "^10.7.0",
 		"react": "^18.3.1",
 		"shapefile": "^0.6.6",
 		"stream-json": "^1.9.1",
-		"swr": "^2.2.5",
-		"tsx": "^4.19.2",
+		"swr": "^2.3.7",
+		"tsx": "^4.21.0",
 		"unzipper": "^0.12.3"
 	},
 	"devDependencies": {
