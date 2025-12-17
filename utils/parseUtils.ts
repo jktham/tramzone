@@ -11,7 +11,7 @@ let AsyncLock = require("async-lock");
 export const KEY_RT = process.env.KEY_RT || "57c5dbbbf1fe4d000100001842c323fa9ff44fbba0b9b925f0c052d1"; // public default key dw
 export const KEY_SA = process.env.KEY_SA;
 
-export const ENDPOINT_GTFS = "https://data.opentransportdata.swiss/dataset/timetable-2025-gtfs2020/permalink";
+export const ENDPOINT_GTFS = "https://data.opentransportdata.swiss/dataset/timetable-2026-gtfs2020/permalink";
 export const ENDPOINT_HIST = "https://data.opentransportdata.swiss/en/dataset/istdaten";
 export const ENDPOINT_RT = "https://api.opentransportdata.swiss/la/gtfs-rt?format=JSON";
 export const ENDPOINT_SA = "https://api.opentransportdata.swiss/la/gtfs-sa?format=JSON";
