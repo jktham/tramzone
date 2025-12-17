@@ -89,7 +89,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
 			if (realtime && !realtime?.error) {
 				let tripIds: Set<string> = new Set(tramTrips.map((t) => t.trip_id));
-				let rt = {"entity": realtime["entity"].filter((e) => tripIds.has(e["id"]))};
+				let rt = {"entity": realtime["entity"].filter((e) => tripIds.has(e["id"].split("|")[0]))};
 				await fs.writeFile("data/gtfs/realtime.json", JSON.stringify({"time": time, "data": rt}));
 			}
 		} catch(e) {
@@ -116,6 +116,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 	}
 
 	let tripIds: Set<string> = new Set(tramTrips.map((t) => t.trip_id));
+	console.log(realtime.entity.length, realtime.entity.filter((e) => tripIds.has(e["id"].split("|")[0])).length);
 	let tripUpdates: TripUpdate[] = realtime["entity"].filter((e) => tripIds.has(e["id"].split("|")[0])).map((t) => {
 		return {
 			trip_id: t["tripUpdate"]["trip"]["tripId"],
