@@ -1,10 +1,9 @@
 import useSWR from "swr";
-import TramMap from "../components/tramMap";
 import {ReactElement, useContext, useEffect, useState} from "react";
 import Overlay from "../components/overlay";
 import SEO from "../components/SEO";
 import Loading from "../components/loading";
-import {timeOffset, histDate} from "../components/tramMap";
+import { timeOffset, histDate, TramMap } from "../components/tramMap";
 import {useTheme} from "next-themes";
 import Grid from "../components/grid";
 import {Geolocation} from "ol";
@@ -12,7 +11,6 @@ import {MediaQueryContext} from "./_app";
 import {MapControlBar, MapControl, FancyControlBox} from "../components/controls";
 import {StackSimple, X} from "@phosphor-icons/react";
 import {Sidebar} from "../components/sidebar";
-import {Filter, Line} from "../utils/types";
 import {useSearchParams} from "next/navigation";
 
 const fetcher = (url) => fetch(url).then((res) => res.json());

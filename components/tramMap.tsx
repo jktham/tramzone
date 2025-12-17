@@ -1,4 +1,6 @@
-import {useEffect, useState, useRef, forwardRef} from "react";
+"use client"
+
+import { useEffect, useState, useRef, forwardRef, memo, useMemo } from "react";
 import "ol/ol.css";
 import Map from "ol/Map";
 import View from "ol/View";
@@ -25,18 +27,38 @@ import {DragRotateAndZoom, DblClickDragZoom, defaults as defaultInteractions} fr
 import {FeatureLike} from "ol/Feature";
 
 // todo: integrate these somehow
-export const timeOffset = 86400000 * -0;
-export const histDate = ""; // ex: 2024-12-01 -> set offset to n days ago
+const timeOffset = 86400000 * -0;
+const histDate = ""; // ex: 2024-12-01 -> set offset to n days ago
 
 
-export default function TramMap({onClick, filter, lineData, stationData, tramData, overlay, debug}: { onClick: (target: any, userLocation: Geolocation) => void; filter?: { trams?: Filter<string>, lines?: Filter<string>, stations?: Filter<string>}; lineData: Line[]; stationData: Station[]; tramData: Tram[]; overlay: any, debug: boolean }) {
+const TramMap = memo<{
+	onClick: (target: any, userLocation: Geolocation) => void;
+	filter?: {
+		trams?: Filter<string>,
+		lines?: Filter<string>,
+		stations?: Filter<string>
+	};
+	lineData: Line[];
+	stationData: Station[];
+	tramData: Tram[];
+	overlay: any,
+	debug: boolean
+}>(({
+	onClick,
+	filter,
+	lineData,
+	stationData,
+	tramData,
+	overlay,
+	debug
+}) => {
 
 	// STATES AND REFS
 
 	const {theme} = useTheme();
 
 	const [map, setMap] = useState<Map>(null);
-	const [stadiaLayer, setStadiaLayer] = useState<TileLayer>();
+	//const [stadiaLayer, setStadiaLayer] = useState<TileLayer>();
 	const [lineLayer, setLineLayer] = useState<VectorLayer>();
 	const [stationLayer, setStationLayer] = useState<VectorLayer>();
 	const [tramLayer, setTramLayer] = useState<VectorLayer>();
@@ -108,15 +130,17 @@ export default function TramMap({onClick, filter, lineData, stationData, tramDat
 	// INITIALIZE MAP
 
 	// layers
-	useEffect(() => {
-
-		setStadiaLayer(new TileLayer({
+	const stadiaLayer = useMemo(() =>
+		new TileLayer({
 			className: "base",
 			source: new StadiaMaps({
 				layer: theme === "light" ? "alidade_smooth" : "alidade_smooth_dark",
 				retina: true,
 			}),
-		}))
+		})
+	, [theme])
+
+	useEffect(() => {
 
 		setLineLayer(new VectorLayer({
 			className: "lines",
@@ -234,16 +258,12 @@ export default function TramMap({onClick, filter, lineData, stationData, tramDat
 		}))
 	}, [userLocation]);
 
-	// theme
+	// update filter and focus
 	useEffect(() => {
-		stadiaLayer?.setSource(new StadiaMaps({
-			layer: theme === "light" ? "alidade_smooth" : "alidade_smooth_dark",
-			retina: true,
-		}))
 		lineLayer?.setStyle(lineStyle(filter.lines, focus))
 		stationLayer?.setStyle(stationStyle(filter.stations))
 		tramLayer?.setStyle(tramStyle(filter.trams))
-	}, [theme, filter, focus]);
+	}, [filter, focus]);
 
 	// tram position
 	useEffect(() => {
@@ -305,4 +325,10 @@ export default function TramMap({onClick, filter, lineData, stationData, tramDat
 			<div className={styles.map} id="map"/>
 		</>
 	);
+})
+
+export {
+	TramMap,
+	timeOffset,
+	histDate,
 }
