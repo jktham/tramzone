@@ -1,8 +1,9 @@
 import styles from "../styles/controls.module.css"
 import {CSSProperties, PropsWithChildren} from "react";
 import clsx from "clsx";
+import { LineSymbol } from "./symbols";
 
-export function MapControl({children, onClick, fillColor, hidden}: { fillColor?: string, onClick?: () => void, hidden?: boolean } & PropsWithChildren) {
+export function ToolbarButton({children, onClick, fillColor, hidden}: { fillColor?: string, onClick?: () => void, hidden?: boolean } & PropsWithChildren) {
 
 	const animStyles : CSSProperties = {
 		...{"--fill2": fillColor, transitionProperty: "height, margin-top, opacity", transitionDuration: ".3s, .3s, .1s"},
@@ -14,14 +15,14 @@ export function MapControl({children, onClick, fillColor, hidden}: { fillColor?:
 	</>
 }
 
-export function MapControlGroup({children, fillColor}: { fillColor?: string } & PropsWithChildren) {
+export function ToolbarGroup({children, fillColor}: { fillColor?: string } & PropsWithChildren) {
 
 	return <>
 		<div style={{"--fill1": fillColor}} className={styles.group}>{children}</div>
 	</>
 }
 
-export function MapControlBar({children, style}: { style?: CSSProperties } & PropsWithChildren) {
+export function Toolbar({children, style}: { style?: CSSProperties } & PropsWithChildren) {
 
 	return <>
 		<div style={style} className={styles.bar}>{children}</div>
@@ -33,5 +34,12 @@ export function FancyControlBox({children, state, title, onClick}: { title: stri
 	return <button onClick={onClick} className={clsx(styles.fancy, state && styles.toggled)}>{children}
 		<span className={styles.knob}><span></span></span>
 		<h2>{title}</h2>
+	</button>
+}
+
+export function TramButton({state, color, name, onClick}: { state?: boolean, color: string, name: string, onClick?: () => void  }) {
+
+	return <button onClick={onClick} className={"p-1 rounded-[10px] bg-bg2 cursor-pointer"}>
+		<LineSymbol color={state ? color : "var(--color-bg1)"} name={name}></LineSymbol>
 	</button>
 }

@@ -53,6 +53,7 @@
 	flex-grow: 1;
 	flex-basis: 6rem;
 	min-width: 6rem;
+	overflow: clip;
 }
 
 .fancy .knob {

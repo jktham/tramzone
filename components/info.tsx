@@ -26,9 +26,11 @@ export default function Info({target, targetLocation, userLocation}: { target: T
 	const distance = meters && (meters > 999 ? Math.round(meters/100)/10 + "km" : Math.round(meters) + "m")
 	const delay = tram && (tram.delay !== 0) && ((tram.delay > 0 ? "+" : "") + Math.round(tram.delay) + "s")
 
+	isLine(target)?.color || isTram(target)?.color
+
 	return <>
 		<div className={styles.info}>
-			<span className={styles.symbol}>{station && <StationSymbol data={station}></StationSymbol> || <LineSymbol target={target}></LineSymbol>}</span>
+			<span className={styles.symbol}>{station && <StationSymbol data={station}></StationSymbol> || <LineSymbol color={line?.color || tram?.color} name={line?.name || tram?.route_name}></LineSymbol>}</span>
 			<div className={styles.content}>
 				<h1 className={styles.title}>{title}</h1>
 				<div className={styles.tags}>

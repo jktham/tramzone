@@ -1,12 +1,5 @@
-* {
-	box-sizing: border-box;
-	color: inherit;
-	margin: 0;
-	padding: 0;
-	outline: none;
-	border: none;
-	scroll-behavior: smooth;
-}
+@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap');
 
 html {
 	font-size: 1.25rem;
@@ -57,4 +50,31 @@ body,
 	--FG2: var(--FB2);
 	--FG3: var(--FW2);
 	--FG4: var(--FW1);
+}
+
+@theme inline {
+	--spacing: 5px; /* for dev only */
+	/*--spacing: 0.25rem;*/ /* for prod */
+
+
+	--color-bg1: var(--BG1);
+	--color-bg2: var(--BG2);
+	--color-bg3: var(--BG3);
+	--color-bg4: var(--BG4);
+	--color-fg1: var(--FG1);
+	--color-fg2: var(--FG2);
+	--color-fg3: var(--FG3);
+	--color-fg4: var(--FG4);
+
+	--font-sans: "JetBrains Mono", monospace;
+	--font-mono: "JetBrains Mono", monospace;
+
+	--text-xs: 12px;
+	--text-xs--line-height: 16px;
+	--text-sm: 13px;
+	--text-sm--line-height: 16px;
+	--text-base: 16px;
+	--text-base--line-height: 20px;
+	--text-lg: 20px;
+	--text-lg--line-height: 25px;
 }

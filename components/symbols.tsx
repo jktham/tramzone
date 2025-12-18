@@ -4,10 +4,10 @@ import {FeatureLike} from "ol/Feature";
 import {memo} from "react";
 import {isLine, isStation, isTram} from "../pages";
 
-export function LineSymbol({target}: { target: Target }) {
+export function LineSymbol({color, name}: { color: string, name: string }) {
 
 	return <>
-		<span style={{background: isLine(target)?.color || isTram(target)?.color}} className={styles.lineSymbol}>{isTram(target)?.route_name || isLine(target)?.name}</span>
+		<span style={{background: color}} className={styles.lineSymbol}>{name}</span>
 	</>
 }
 

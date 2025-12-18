@@ -21,11 +21,11 @@ import {Attribution} from "ol/control";
 import {useTheme} from "next-themes";
 import {lineStyle, locationStyle, stationStyle, tramStyle, userInZurich} from "../utils/mapUtils";
 import {TargetOverlay} from "./symbols";
-import {MapControlBar, MapControl, MapControlGroup} from "./controls";
-import {GpsFix, Minus, NavigationArrow, Plus} from "@phosphor-icons/react";
+import {Toolbar, ToolbarButton, ToolbarGroup} from "./controls";
 import {DragRotateAndZoom, DblClickDragZoom, defaults as defaultInteractions} from "ol/interaction";
 import {FeatureLike} from "ol/Feature";
 import * as Extent from "ol/extent";
+import { GpsFixIcon, MinusIcon, NavigationArrowIcon, PlusIcon } from "@phosphor-icons/react";
 
 export type ClickTarget = FeatureLike;
 
@@ -260,7 +260,7 @@ const TramMap =  memo((
 		if (target.type === "station" && stationLayer) features = stationLayer.getSource().getFeatures().filter(f => f.getProperties().station === (target.data as Station))
 		if (target.type === "line" && lineLayer) features = lineLayer.getSource().getFeatures().filter(f => f.getProperties().line === (target.data as Line))
 		if (target.type === "segment" && lineLayer) features = lineLayer.getSource().getFeatures().filter(f => f.getProperties().segment === (target.data as Segment))
-		if (target.type === "tram" && tramLayer) features = tramLayer.getSource().getFeatures().filter(f => f.getProperties().tram.trip_id === (target.data as Tram).trip_id)
+		if (target.type === "tram" && tramLayer) features = tramLayer.getSource().getFeatures().filter(f => f.getProperties().tram?.trip_id === (target.data as Tram)?.trip_id && (target.data as Tram) !== undefined)
 
 		let location = features?.[0]?.getProperties()?.geometry?.flatCoordinates
 		if (["line", "segment"].includes(target.type)) {
@@ -303,16 +303,16 @@ const TramMap =  memo((
 	return (
 		<>
 			<div className={styles.controls}>
-				<MapControlBar style={{transition: ".3s"}}>
-					<MapControlGroup fillColor={"var(--BG2)"}>
-						<MapControl onClick={increaseZoom}><Plus color={"var(--FG1)"} weight={"bold"} size={16}></Plus></MapControl>
-						<MapControl onClick={decreaseZoom}><Minus color={"var(--FG1)"} weight={"bold"} size={16}></Minus></MapControl>
-					</MapControlGroup>
-					<MapControl hidden={!userInZurich(userLocation)} onClick={centerView}><GpsFix color={"var(--LOC)"} weight={"bold"} size={16}></GpsFix></MapControl>
-					<MapControl hidden={Math.abs(rotation) < 0.01} onClick={restoreRotation}>
-						<div style={{height: "16px", transform: "rotate(" + rotation + "rad)"/*, transition: "transform .3s"*/}}><NavigationArrow style={{transform: "rotate(45deg)"}} color={"var(--FG1)"} weight={"bold"} size={16}></NavigationArrow></div>
-					</MapControl>
-				</MapControlBar>
+				<Toolbar style={{transition: ".3s"}}>
+					<ToolbarGroup fillColor={"var(--BG2)"}>
+						<ToolbarButton onClick={increaseZoom}><PlusIcon color={"var(--FG1)"} weight={"bold"} size={16}></PlusIcon></ToolbarButton>
+						<ToolbarButton onClick={decreaseZoom}><MinusIcon color={"var(--FG1)"} weight={"bold"} size={16}></MinusIcon></ToolbarButton>
+					</ToolbarGroup>
+					<ToolbarButton hidden={!userInZurich(userLocation)} onClick={centerView}><GpsFixIcon color={"var(--LOC)"} weight={"bold"} size={16}></GpsFixIcon></ToolbarButton>
+					<ToolbarButton hidden={Math.abs(rotation) < 0.01} onClick={restoreRotation}>
+						<div style={{height: "16px", transform: "rotate(" + rotation + "rad)"/*, transition: "transform .3s"*/}}><NavigationArrowIcon style={{transform: "rotate(45deg)"}} color={"var(--FG1)"} weight={"bold"} size={16}></NavigationArrowIcon></div>
+					</ToolbarButton>
+				</Toolbar>
 			</div>
 			<div ref={overlayRef}>
 				<div className={styles.target}>{target && (["tram", "station"].includes(target.type)) && <TargetOverlay target={target}></TargetOverlay>}</div>

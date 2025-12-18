@@ -614,6 +614,8 @@ export async function getHist(date: string) {
 export async function parseHist(date: string) {
 	console.log("parsing historical data: ", date);
 
+	let lineColors = JSON.parse(await fs.readFile(`data/datasets/lineColors.json`, "utf-8"));
+
 	let histStops = [];
 	let first = true;
 	await new Promise<void>((resolve) => {
@@ -674,6 +676,7 @@ export async function parseHist(date: string) {
 			trip_id: v[0].trip_id,
 			trip_name: v[0].trip_name,
 			trip_status: "scheduled",
+			color: lineColors.find((l) => l.name == v[0].trip_name)?.color || "#888888", // not sure if this works
 			headsign: "",
 			direction: 0,
 			route_id: v[0].route_id,

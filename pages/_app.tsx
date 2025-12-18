@@ -1,5 +1,4 @@
 import "/styles/globals.css";
-import "/styles/main.css";
 import {ThemeProvider, useTheme} from "next-themes";
 import {createContext, useEffect, useState} from "react";
 
