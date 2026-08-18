@@ -116,7 +116,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 	}
 
 	let tripIds: Set<string> = new Set(tramTrips.map((t) => t.trip_id));
-	console.log(realtime.entity.length, realtime.entity.filter((e) => tripIds.has(e["id"].split("|")[0])).length);
+	console.log(`rt entities: ${realtime.entity.length}, filtered: ${realtime.entity.filter((e) => tripIds.has(e["id"].split("|")[0])).length}`);
 	let tripUpdates: TripUpdate[] = realtime["entity"].filter((e) => tripIds.has(e["id"].split("|")[0])).map((t) => {
 		return {
 			trip_id: t["tripUpdate"]["trip"]["tripId"],
@@ -195,7 +195,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 			delay: 0,
 			active: false,
 			stops: t.stops.map((s) => {
-				let station: Station | undefined = stationsMap.get(Number(s.stop_id.split(":")[0]));
+				let id = Number(s.stop_id.split(":")[0]); // TODO: fix :)
+				let station: Station | undefined = stationsMap.get(id);
 				let u = update?.stops?.find((us) => us.stop_id == s.stop_id);
 				let offset = 2 * 3600000; // todo: switch to cest automatically
 				return {
@@ -226,8 +227,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 			}
 			return s;
 		});
+		if (time >= t.stops[0].pred_arrival && time <= t.stops[t.stops.length-1].pred_departure) {
+			t.active = true;
+		}
 		return t;
 	});
+	
+	// TODO: quick fix for too large dataset
+	console.log(`total trams: ${trams.length}, filtered: ${trams.filter(t => t.active).length}`)
+	if (query.active) {
+		trams = trams.filter(t => t.active);
+	}
 
 	let arrivalsMap: Map<Number, {stop: Stop, line: string}[]> = new Map();
 	trams.map((t) => {
